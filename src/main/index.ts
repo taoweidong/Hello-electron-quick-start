@@ -142,7 +142,7 @@ app.on('activate', () => {
 })
 
 // IPC 处理器注册
-import './ipc/index.js'
+import './ipc/index'
 
 function createApplicationMenu() {
   const template = [

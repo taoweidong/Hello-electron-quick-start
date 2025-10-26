@@ -15,7 +15,7 @@ export default defineConfig({
     }
   },
   server: {
-    port: 5178,  // 更改端口为5178
+    port: 5180,  // 更改端口为5180
     strictPort: true
   },
   resolve: {
