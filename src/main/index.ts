@@ -41,8 +41,8 @@ let indexHtml = ''
 if (process.env.VITE_DEV_SERVER_URL) {
   indexHtml = join(process.env.DIST, 'index.html')
 } else {
-  // 在生产模式下，使用 ASAR 文件中的路径
-  indexHtml = join(__dirname, '../view/index.html')
+  // 在生产模式下，使用正确的路径指向 dist/view/index.html
+  indexHtml = join(process.env.DIST, 'index.html')
 }
 const iconPath = process.env.PUBLIC ? join(process.env.PUBLIC, 'favicon.ico') : undefined
 

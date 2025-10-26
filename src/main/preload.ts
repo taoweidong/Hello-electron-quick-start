@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFile: (path: string) => ipcRenderer.invoke('file:read', path),
   writeFile: (path: string, content: string) => ipcRenderer.invoke('file:write', path, content),
   extractZip: (zipPath: string, extractPath: string) => ipcRenderer.invoke('zip:extract', zipPath, extractPath),
+  extractRar: (rarPath: string, extractPath: string) => ipcRenderer.invoke('rar:extract', rarPath, extractPath),
   getFileInfo: (path: string) => ipcRenderer.invoke('file:getInfo', path),
   readDir: (path: string) => ipcRenderer.invoke('file:readDir', path),
   getAppPath: (name: string) => ipcRenderer.invoke('app:getPath', name),
@@ -39,6 +40,7 @@ export interface ElectronAPI {
   readFile: (path: string) => Promise<{ success: boolean; content?: string; error?: string }>
   writeFile: (path: string, content: string) => Promise<{ success: boolean; error?: string }>
   extractZip: (zipPath: string, extractPath: string) => Promise<{ success: boolean; files?: any[]; error?: string }>
+  extractRar: (rarPath: string, extractPath: string) => Promise<{ success: boolean; files?: any[]; error?: string }>
   getFileInfo: (path: string) => Promise<{ success: boolean; info?: any; error?: string }>
   readDir: (path: string) => Promise<{ success: boolean; files?: any[]; error?: string }>
   getAppPath: (name: string) => Promise<string>

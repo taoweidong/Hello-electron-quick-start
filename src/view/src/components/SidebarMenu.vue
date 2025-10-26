@@ -7,35 +7,23 @@
     text-color="var(--el-text-color-regular)"
     active-text-color="var(--el-color-primary)"
   >
-    <template v-for="route in menuRoutes" :key="route.name">
-      <el-menu-item :index="route.path">
-        <el-icon>
-          <component :is="route.meta?.icon" />
-        </el-icon>
-        <span>{{ route.meta?.title }}</span>
-      </el-menu-item>
-    </template>
+    <el-menu-item index="/">
+      <el-icon>
+        <Folder />
+      </el-icon>
+      <span>文件管理</span>
+    </el-menu-item>
   </el-menu>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import router from '@/router'
+import { Folder } from '@element-plus/icons-vue'
 
 const route = useRoute()
 
 const activeMenu = computed(() => route.path)
-
-const menuRoutes = computed(() => {
-  return router.getRoutes().filter(route => 
-    route.meta && route.meta.title && !route.meta.hidden
-  ).sort((a, b) => {
-    const orderA = a.meta.order as number || 0
-    const orderB = b.meta.order as number || 0
-    return orderA - orderB
-  })
-})
 </script>
 
 <style lang="scss" scoped>

@@ -2,6 +2,8 @@ const electron = require('electron')
 const { readFile, writeFile, access, constants } = require('node:fs/promises')
 const { join, dirname } = require('node:path')
 const JSZip = require('jszip')
+// @ts-ignore
+const Unrar = require('unrar')
 
 // 文件操作处理器
 electron.ipcMain.handle('file:read', async (event: any, filePath: string) => {
@@ -81,6 +83,65 @@ electron.ipcMain.handle('zip:extract', async (event: any, zipPath: string, extra
     })
     
     await Promise.all(promises)
+    return { success: true, files: extractedFiles }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+})
+
+// RAR 文件解压处理器
+electron.ipcMain.handle('rar:extract', async (event: any, rarPath: string, extractPath: string) => {
+  try {
+    // 检查 RAR 文件是否存在
+    await access(rarPath, constants.F_OK)
+    
+    // 创建解压目录
+    const fs = require('node:fs')
+    if (!fs.existsSync(extractPath)) {
+      fs.mkdirSync(extractPath, { recursive: true })
+    }
+    
+    // 使用 unrar 解压文件
+    const rar = new Unrar(rarPath)
+    const entries = await rar.getEntries()
+    
+    const extractedFiles: any[] = []
+    
+    for (const entry of entries) {
+      const fullPath = join(extractPath, entry.name)
+      
+      if (entry.isDirectory) {
+        // 创建目录
+        if (!fs.existsSync(fullPath)) {
+          fs.mkdirSync(fullPath, { recursive: true })
+        }
+        extractedFiles.push({
+          name: entry.name,
+          path: fullPath,
+          isDirectory: true,
+          size: 0
+        })
+      } else {
+        // 解压文件
+        // 确保父目录存在
+        const parentDir = dirname(fullPath)
+        if (!fs.existsSync(parentDir)) {
+          fs.mkdirSync(parentDir, { recursive: true })
+        }
+        
+        // 提取文件内容
+        const content = await rar.extract(entry.name)
+        await fs.promises.writeFile(fullPath, content)
+        
+        extractedFiles.push({
+          name: entry.name,
+          path: fullPath,
+          isDirectory: false,
+          size: entry.uncompressedSize
+        })
+      }
+    }
+    
     return { success: true, files: extractedFiles }
   } catch (error: any) {
     return { success: false, error: error.message }

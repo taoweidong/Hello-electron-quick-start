@@ -9,7 +9,7 @@
         <div class="drop-zone" @drop="handleDrop" @dragover="handleDragOver">
           <el-text type="info" v-if="!fileTree.length">
             <el-icon><Upload /></el-icon>
-            <div>拖拽 ZIP 文件到此处上传</div>
+            <div>拖拽 ZIP 或 RAR 文件到此处上传</div>
           </el-text>
           <div v-else>
             <el-tree
@@ -23,10 +23,7 @@
                 <div class="file-tree-node">
                   <el-icon class="file-icon">
                     <FolderOpened v-if="data.isDirectory" />
-                    <Document v-if="!data.isDirectory && isTextFile(data.name)" />
-                    <Picture v-if="!data.isDirectory && isImageFile(data.name)" />
-                    <Folder v-if="!data.isDirectory && isZipFile(data.name)" />
-                    <Document v-else-if="!data.isDirectory" />
+                    <component :is="getFileIcon(data.name)" />
                   </el-icon>
                   <span class="file-label">{{ node.label }}</span>
                 </div>
@@ -48,10 +45,7 @@
             <div class="card-header">
               <el-icon class="file-detail-icon">
                 <FolderOpened v-if="selectedFile.isDirectory" />
-                <Document v-if="!selectedFile.isDirectory && isTextFile(selectedFile.name)" />
-                <Picture v-if="!selectedFile.isDirectory && isImageFile(selectedFile.name)" />
-                <Folder v-if="!selectedFile.isDirectory && isZipFile(selectedFile.name)" />
-                <Document v-else-if="!selectedFile.isDirectory" />
+                <component :is="getFileIcon(selectedFile.name)" />
               </el-icon>
               <span>文件属性</span>
             </div>
@@ -67,64 +61,16 @@
         </el-card>
         
         <!-- 文件内容 -->
-        <el-card class="file-content-card" v-if="selectedFile && !selectedFile.isDirectory && isTextFile(selectedFile.name)">
+        <el-card class="file-content-card" v-if="selectedFile && !selectedFile.isDirectory">
           <template #header>
             <div class="card-header">
-              <span>文件内容</span>
+              <span>{{ getFileRendererTitle() }}</span>
             </div>
           </template>
-          <el-input
-            v-model="fileContent"
-            type="textarea"
-            :rows="15"
-            readonly
-            placeholder="文件内容将在此处显示"
-          />
-        </el-card>
-        
-        <!-- 图片预览 -->
-        <el-card class="file-content-card" v-else-if="selectedFile && !selectedFile.isDirectory && isImageFile(selectedFile.name)">
-          <template #header>
-            <div class="card-header">
-              <span>图片预览</span>
-            </div>
-          </template>
-          <div class="image-preview">
-            <el-image
-              :src="getImageSrc(selectedFile.path)"
-              fit="contain"
-              style="max-width: 100%; max-height: 400px;"
-            />
-          </div>
-        </el-card>
-        
-        <!-- ZIP文件信息 -->
-        <el-card class="file-content-card" v-else-if="selectedFile && !selectedFile.isDirectory && isZipFile(selectedFile.name)">
-          <template #header>
-            <div class="card-header">
-              <span>ZIP文件信息</span>
-            </div>
-          </template>
-          <el-alert
-            title="这是一个ZIP压缩文件"
-            type="info"
-            description="您可以将此文件拖拽到左侧区域进行解压查看内容"
-            show-icon
-          />
-        </el-card>
-        
-        <!-- 不支持预览的文件 -->
-        <el-card class="file-content-card" v-else-if="selectedFile && !selectedFile.isDirectory">
-          <template #header>
-            <div class="card-header">
-              <span>文件信息</span>
-            </div>
-          </template>
-          <el-alert
-            title="不支持预览"
-            type="warning"
-            :description="`当前文件类型 (${getFileType(selectedFile.name)}) 暂不支持预览`"
-            show-icon
+          <FileRenderer 
+            :file="selectedFile" 
+            @content-loaded="onFileContentLoaded"
+            @image-loaded="onImageLoaded"
           />
         </el-card>
         
@@ -137,8 +83,17 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Upload, FolderOpened, Document, Picture, Folder } from '@element-plus/icons-vue'
+import { 
+  Upload, 
+  FolderOpened, 
+  Document, 
+  Picture, 
+  Folder 
+} from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { formatFileSize, formatTime } from '@/utils'
+import { FileExtractorFactory } from '@/services/FileExtractorFactory'
+import FileRenderer from '@/components/FileRenderer.vue'
 
 // 文件树数据
 const fileTree = ref<any[]>([])
@@ -151,19 +106,43 @@ const treeProps = {
 // 选中的文件
 const selectedFile = ref<any>(null)
 const fileContent = ref<string>('')
+const imageSrc = ref<string>('')
 
-// 格式化文件大小
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+// 获取文件渲染器标题
+const getFileRendererTitle = () => {
+  if (!selectedFile.value) return ''
+  
+  if (isTextFile(selectedFile.value.name)) return '文件内容'
+  if (isImageFile(selectedFile.value.name)) return '图片预览'
+  if (isZipFile(selectedFile.value.name)) return 'ZIP文件信息'
+  if (isRarFile(selectedFile.value.name)) return 'RAR文件信息'
+  return '文件信息'
 }
 
-// 格式化日期
-const formatDate = (date: Date): string => {
-  return new Date(date).toLocaleString('zh-CN')
+// 文件内容加载完成事件处理
+const onFileContentLoaded = (content: string) => {
+  fileContent.value = content
+}
+
+// 图片加载完成事件处理
+const onImageLoaded = (src: string) => {
+  imageSrc.value = src
+}
+
+// 获取文件图标组件
+const getFileIcon = (filename: string) => {
+  if (isDirectory(filename)) return FolderOpened
+  if (isTextFile(filename)) return Document
+  if (isImageFile(filename)) return Picture
+  if (isArchiveFile(filename)) return Folder
+  return Document
+}
+
+// 判断是否为目录
+const isDirectory = (filename: string): boolean => {
+  // 这里可以根据实际需求判断是否为目录
+  // 目前简化处理，通过文件名是否包含点来判断
+  return !filename.includes('.')
 }
 
 // 判断是否为文本文件
@@ -180,25 +159,36 @@ const isImageFile = (filename: string): boolean => {
   return imageExtensions.includes(ext)
 }
 
+// 判断是否为压缩文件
+const isArchiveFile = (filename: string): boolean => {
+  const archiveExtensions = ['.zip', '.rar', '.7z', '.tar', '.gz']
+  const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'))
+  return archiveExtensions.includes(ext)
+}
+
 // 判断是否为ZIP文件
 const isZipFile = (filename: string): boolean => {
-  const zipExtensions = ['.zip', '.rar', '.7z', '.tar', '.gz']
-  const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'))
-  return zipExtensions.includes(ext)
+  return filename.toLowerCase().endsWith('.zip')
+}
+
+// 判断是否为RAR文件
+const isRarFile = (filename: string): boolean => {
+  return filename.toLowerCase().endsWith('.rar')
 }
 
 // 获取文件类型描述
 const getFileType = (filename: string): string => {
   if (isTextFile(filename)) return '文本文件'
   if (isImageFile(filename)) return '图片文件'
-  if (isZipFile(filename)) return '压缩文件'
+  if (isZipFile(filename)) return 'ZIP压缩文件'
+  if (isRarFile(filename)) return 'RAR压缩文件'
+  if (isArchiveFile(filename)) return '其他压缩文件'
   return '未知文件'
 }
 
-// 获取图片源路径
-const getImageSrc = (filePath: string): string => {
-  // 在Electron中，需要将文件路径转换为URL格式
-  return `file://${filePath}`
+// 格式化日期
+const formatDate = (date: Date): string => {
+  return formatTime(new Date(date))
 }
 
 // 处理拖拽事件
@@ -216,24 +206,38 @@ const handleDrop = async (event: DragEvent) => {
   if (files.length === 0) return
   
   const file = files[0]
-  if (!file.name.toLowerCase().endsWith('.zip')) {
-    ElMessage.warning('请上传 ZIP 文件')
+  const fileName = file.name.toLowerCase()
+  
+  // 检查文件格式是否为支持的压缩格式
+  if (!fileName.endsWith('.zip') && !fileName.endsWith('.rar')) {
+    ElMessage.warning('请上传 ZIP 或 RAR 文件')
     return
   }
   
   try {
+    // 获取文件扩展名
+    const extension = fileName.substring(fileName.lastIndexOf('.'))
+    
+    // 使用工厂模式创建对应的解压器
+    const extractor = FileExtractorFactory.createExtractor(extension)
+    
+    if (!extractor) {
+      ElMessage.error(`不支持的文件格式: ${extension}`)
+      return
+    }
+    
     // 创建临时目录用于解压
     // @ts-ignore
     const userDataPath = await window.electronAPI.getAppPath('userData')
     const extractPath = `${userDataPath}/extracted/${Date.now()}`
     
-    // 调用主进程解压 ZIP 文件
+    // 调用解压器解压文件
     // @ts-ignore
-    const result = await window.electronAPI.extractZip(file.path, extractPath)
+    const result = await extractor.extract(file.path, extractPath)
     
     if (result.success) {
       // 构建文件树结构
-      buildFileTree(extractPath, result.files)
+      buildFileTree(extractPath, result.files || [])
       ElMessage.success('文件解压成功')
     } else {
       ElMessage.error(`解压失败: ${result.error}`)
@@ -310,29 +314,10 @@ const buildFileTree = (basePath: string, files: any[]) => {
 // 处理节点点击
 const handleNodeClick = async (data: any) => {
   selectedFile.value = data
+  fileContent.value = ''
+  imageSrc.value = ''
   
-  if (!data.isDirectory) {
-    // 根据文件类型处理内容显示
-    if (isTextFile(data.name)) {
-      try {
-        // 读取文件内容
-        // @ts-ignore
-        const result = await window.electronAPI.readFile(data.path)
-        if (result.success) {
-          fileContent.value = result.content || ''
-        } else {
-          fileContent.value = `读取文件失败: ${result.error}`
-        }
-      } catch (error: any) {
-        fileContent.value = `读取文件失败: ${error.message}`
-      }
-    } else {
-      // 非文本文件不需要读取内容
-      fileContent.value = ''
-    }
-  } else {
-    fileContent.value = ''
-  }
+  // 当选中文件时，FileRenderer组件会自动处理文件渲染
 }
 
 // 组件挂载时的初始化
