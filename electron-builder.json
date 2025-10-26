@@ -1,0 +1,52 @@
+{
+  "appId": "com.yourcompany.yourapp",
+  "productName": "My-Win-App",
+  "copyright": "Copyright © 2024 Your Company",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "node_modules/**/*",
+    "package.json",
+    "!node_modules/@types/**/*",
+    "!node_modules/**/*.d.ts",
+    "!node_modules/**/*.map"
+  ],
+  
+  "win": {
+    "target": [
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      },
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "./build/icons/icon.ico",
+    "artifactName": "${productName}-${version}-${arch}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "My-Win-App"
+  },
+  "portable": {
+    "artifactName": "${productName}-${version}-portable.${ext}",
+    "useZip": true
+  },
+  "mac": {
+    "target": "dmg",
+    "icon": "./build/icons/icon.icns",
+    "category": "public.app-category.productivity"
+  },
+  "linux": {
+    "target": "AppImage",
+    "icon": "./build/icons",
+    "category": "Development"
+  }
+}
