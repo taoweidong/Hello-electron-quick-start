@@ -41,13 +41,16 @@ let indexHtml = ''
 if (process.env.VITE_DEV_SERVER_URL) {
   indexHtml = join(process.env.DIST, 'index.html')
 } else {
-  // 在生产模式下，使用正确的路径指向 dist/view/index.html
-  indexHtml = join(process.env.DIST, 'index.html')
+  // 在生产模式下，使用正确的路径指向打包后的文件
+  // Electron Builder 会将文件打包到 app.asar 中，我们需要指向正确的路径
+  indexHtml = join(__dirname, '../view/index.html')
 }
 const iconPath = process.env.PUBLIC ? join(process.env.PUBLIC, 'favicon.ico') : undefined
 
 async function createWindow() {
   logToFile('Creating window...')
+  logToFile(`DIST_ELECTRON: ${process.env.DIST_ELECTRON}`)
+  logToFile(`DIST: ${process.env.DIST}`)
   logToFile(`indexHtml path: ${indexHtml}`)
   logToFile(`File exists: ${existsSync(indexHtml)}`)
   
@@ -213,7 +216,7 @@ function createApplicationMenu() {
           label: '关于',
           click: async () => {
             const { shell } = await import('electron')
-            await shell.openExternal('https://github.com/your-repo')
+            await shell.openExternal('https://github.com/taoweidong/Hello-electron-quick-start')
           }
         }
       ]

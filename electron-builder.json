@@ -37,7 +37,8 @@
   },
   "portable": {
     "artifactName": "${productName}-${version}-portable.${ext}",
-    "useZip": true
+    "useZip": true,
+    "unpackDirName": "app-files"
   },
   "mac": {
     "target": "dmg",
