@@ -24,12 +24,10 @@ export const useAppStore = defineStore('app', {
     updateTheme(theme: string) {
       this.settings.theme = theme
     },
-    
+
     updateUser(name: string, avatar: string) {
       this.user.name = name
       this.user.avatar = avatar
     }
-  },
-  
-  persist: true // 启用持久化存储
+  }
 })

@@ -28,7 +28,6 @@ export default defineComponent({
 
     const loadFileContent = async () => {
       try {
-        // @ts-ignore
         const result = await window.electronAPI.readFile(props.file.path)
         if (result.success) {
           fileContent.value = result.content || ''

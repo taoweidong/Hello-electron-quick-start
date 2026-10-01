@@ -4,54 +4,59 @@
 
 ```
 .
-├── build/                  # 构建相关配置和资源
-│   ├── config/             # 构建配置文件
-│   │   ├── electron-builder.json  # Electron 打包配置
-│   │   ├── tsconfig.json          # TypeScript 主配置
-│   │   ├── tsconfig.node.json     # Node.js 相关 TypeScript 配置
-│   │   ├── tsconfig.web.json      # Web 相关 TypeScript 配置
-│   │   └── vite.config.ts         # Vite 构建配置
-│   └── icons/              # 应用图标
-│       ├── icon.icns       # macOS 图标
-│       ├── icon.ico        # Windows 图标
-│       └── icon.png        # 通用图标
-├── dist/                   # 构建输出目录
-│   └── view/               # Vue 渲染进程构建输出 (原 renderer 目录)
+├── build/
+│   └── icons/              # 应用图标（icon.ico / icon.icns / icon.png）
+├── dist/                   # 构建输出（gitignore）
+│   ├── main/               # 主进程 tsc 编译输出
+│   │   ├── main/           #   ← src/main 的产物（package.json main 指向 main/index.js）
+│   │   └── shared/         #   ← src/shared 的产物（供主进程运行时引用）
+│   └── view/               # Vite 构建输出（Vite root 为 src/view）
 ├── docs/                   # 项目文档
-├── release/                # Electron 打包输出
-├── src/                    # 源代码
-│   ├── main/               # Electron 主进程
-│   ├── view/               # Vue 渲染进程 (原 renderer 目录)
-│   └── shared/             # 主进程与渲染进程共享代码
-└── package.json            # 项目配置
+├── release/                # electron-builder 打包输出（gitignore）
+├── src/
+│   ├── main/               # Electron 主进程（TypeScript）
+│   │   ├── index.ts        #   入口：窗口、菜单、日志（userData/app.log）
+│   │   ├── preload.ts      #   contextBridge 暴露 window.electronAPI
+│   │   └── ipc/            #   ipcMain.handle 处理器（appHandlers / fileHandlers）
+│   ├── view/               # Vue 3 渲染进程（Vite root）
+│   │   ├── index.html
+│   │   └── src/
+│   │       ├── components/ #   公共组件与文件渲染器（renderers/）
+│   │       ├── services/   #   文件渲染/解压服务（Zip / Rar / Text / Image）
+│   │       ├── views/      #   页面（Home / Files / Settings / About）
+│   │       ├── store/      #   Pinia
+│   │       ├── router/     #   Vue Router
+│   │       ├── types/      #   渲染进程类型声明（含 Window.electronAPI 全局增强）
+│   │       └── main.ts
+│   └── shared/             # 主/渲染进程共享代码（别名 @shared）
+│       ├── constants/      #   常量（仅 index.ts，单一来源）
+│       └── types/          #   共享类型（electron.d.ts，含 ElectronAPI 完整定义）
+├── test-main.js            # 冒烟测试（npm run electron:test，自动退出）
+├── electron-builder.json   # 打包配置（根目录，生效配置）
+├── vite.config.ts          # Vite 配置（根目录，生效配置）
+├── tsconfig.json           # TS 基础配置（路径别名）
+├── tsconfig.node.json      # 主进程 TS 配置（rootDir=src，输出 dist/main）
+└── tsconfig.web.json       # 渲染进程 TS 配置
 ```
 
-## 变更说明
+## 关键约定
 
-为了保持项目结构的整洁，所有与构建相关的配置文件和静态资源已归档到 `build` 目录下：
+1. **主进程构建**：`tsconfig.node.json` 的 `rootDir` 为 `./src`，因此 `src/main` 产物落在
+   `dist/main/main/`、`src/shared` 产物落在 `dist/main/shared/`，源码中的相对导入
+   （如 ipc 里的 `../../shared/constants`）在产物中原样成立，无需任何后处理脚本。
+2. **类型单一来源**：`window.electronAPI` 的类型唯一声明在 `src/shared/types/electron.d.ts`
+   的 `ElectronAPI` 接口；preload 实现该接口，渲染进程通过
+   `src/view/src/types/electron.d.ts` 做全局 Window 增强。新增 IPC 通道时三处同步修改。
+3. **常量单一来源**：`src/shared/constants/index.ts` 是唯一版本，禁止再放置编译产物。
+4. **dev 热更新**：`npm run electron:dev` 通过 cross-env 注入
+   `VITE_DEV_SERVER_URL=http://localhost:5180`，Electron 加载 Vite 开发服务器。
+5. **打包**：`electron-builder.json` 的 `files` 不再显式包含 `node_modules`，
+   electron-builder 自动附带生产依赖，安装包体积显著减小。
 
-1. **配置文件迁移**：
-   - `electron-builder.json` → `build/config/electron-builder.json`
-   - `vite.config.ts` → `build/config/vite.config.ts`
-   - `tsconfig.json` → `build/config/tsconfig.json`
-   - `tsconfig.node.json` → `build/config/tsconfig.node.json`
-   - `tsconfig.web.json` → `build/config/tsconfig.web.json`
+## 常用命令
 
-2. **静态资源迁移**：
-   - 项目图标已统一放置在 `build/icons/` 目录下
-
-3. **目录重命名**：
-   - `renderer` 目录已重命名为 `view`，以更好地反映其作为视图层的用途
-
-4. **脚本更新**：
-   - 所有 npm 脚本已更新，使用 `--config` 参数指向新的配置文件位置
-   - 使用 `tsc` 替代 `vue-tsc` 进行类型检查，避免在 Windows 上的兼容性问题
-
-## 使用说明
-
-- 开发：`npm run dev`
-- 构建：`npm run build`
-- 打包：`npm run electron:pack`
-- 清理：`npm run clean` （清理构建产物，包括 dist/ 和 release/ 目录）
-
-所有构建和打包操作都会自动使用 `build/config/` 目录下的配置文件。
+- 开发：`npm run electron:dev`（先编译主进程，再并行启动 Vite 与 Electron）
+- 类型检查：`npm run type-check`（vue-tsc 检查渲染进程，tsc 检查主进程，真实生效）
+- 冒烟测试：`npm run build && npm run electron:test`
+- 打包目录版：`npm run build`；NSIS 安装包：`npm run build:prod`；便携版：`npm run build:portable`
+- 清理：`npm run clean`

@@ -227,12 +227,10 @@ const handleDrop = async (event: DragEvent) => {
     }
     
     // 创建临时目录用于解压
-    // @ts-ignore
     const userDataPath = await window.electronAPI.getAppPath('userData')
     const extractPath = `${userDataPath}/extracted/${Date.now()}`
-    
+
     // 调用解压器解压文件
-    // @ts-ignore
     const result = await extractor.extract(file.path, extractPath)
     
     if (result.success) {

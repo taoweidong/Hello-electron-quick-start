@@ -7,11 +7,9 @@
   },
   "files": [
     "dist/**/*",
-    "node_modules/**/*",
     "package.json",
-    "!node_modules/@types/**/*",
-    "!node_modules/**/*.d.ts",
-    "!node_modules/**/*.map"
+    "!node_modules/**/*.map",
+    "!node_modules/**/*.d.ts"
   ],
   
   "win": {

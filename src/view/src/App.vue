@@ -13,11 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-// @ts-ignore
-import SidebarMenu from '@/components/SidebarMenu.vue'
-
-// 移除了窗口控制相关的方法和状态
+// 应用壳：仅承载路由视图（侧边栏与窗口控制当前未启用）
 </script>
 
 <style lang="scss">

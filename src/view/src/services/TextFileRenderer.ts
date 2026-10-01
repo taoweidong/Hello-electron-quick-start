@@ -12,7 +12,6 @@ export class TextFileRenderer extends FileRenderer {
    */
   async render(filePath: string): Promise<{success: boolean, content?: string, error?: string}> {
     try {
-      // @ts-ignore
       const result = await window.electronAPI.readFile(filePath)
       return result
     } catch (error: any) {

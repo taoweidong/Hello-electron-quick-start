@@ -10,7 +10,7 @@ export class RarFileRenderer extends FileRenderer {
    * @param filePath 文件路径
    * @returns 渲染结果
    */
-  async render(filePath: string): Promise<{success: boolean, content?: string, error?: string}> {
+  async render(_filePath: string): Promise<{success: boolean, content?: string, error?: string}> {
     try {
       // 对于RAR文件，我们返回一个提示信息
       return {

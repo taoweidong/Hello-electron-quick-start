@@ -14,7 +14,6 @@ export class RarExtractor extends FileExtractor {
   async extract(filePath: string, extractPath: string): Promise<{success: boolean, error?: string, files?: any[]}> {
     try {
       // 调用主进程的解压功能
-      // @ts-ignore
       const result = await window.electronAPI.extractRar(filePath, extractPath)
       return result
     } catch (error: any) {
