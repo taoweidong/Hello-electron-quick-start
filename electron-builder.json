@@ -5,6 +5,12 @@
   "directories": {
     "output": "release"
   },
+  "publish": [
+    {
+      "provider": "generic",
+      "url": "http://localhost:58132/update/"
+    }
+  ],
   "files": [
     "dist/**/*",
     "package.json",
