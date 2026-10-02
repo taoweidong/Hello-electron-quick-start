@@ -11,6 +11,16 @@ const routes: RouteRecordRaw[] = [
       icon: 'Folder',
       keepAlive: true
     }
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('@/views/SettingsView.vue'),
+    meta: {
+      title: '设置',
+      icon: 'Setting',
+      keepAlive: true
+    }
   }
 ]
 

@@ -1,10 +1,12 @@
 import { app, BrowserWindow, Menu, shell, dialog } from 'electron'
 import { join } from 'node:path'
 import { appendFileSync } from 'node:fs'
+import { getLogsDir } from './workspace'
+import { getDb } from './db'
 
-// 写日志到 userData/app.log，便于排查打包后的加载问题
+// 写日志到工作目录 logs/app.log（工作目录不可用时回落 userData），便于排查运行问题
 function logToFile(message: string) {
-  const logPath = join(app.getPath('userData'), 'app.log')
+  const logPath = join(getLogsDir(), 'app.log')
   const timestamp = new Date().toISOString()
   try {
     appendFileSync(logPath, `[${timestamp}] ${message}\n`)
@@ -87,6 +89,12 @@ async function createWindow() {
 
 app.whenReady().then(() => {
   logToFile('App is ready')
+  // 启动时建立 data/app.db 与 settings 表（规格：SQLite 数据库文件归属）
+  try {
+    getDb()
+  } catch (error: any) {
+    logToFile(`Database init failed: ${error.message}`)
+  }
   createWindow()
 }).catch(error => {
   logToFile(`Failed to create window: ${error.message}`)

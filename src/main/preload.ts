@@ -34,7 +34,14 @@ const api: ElectronAPI = {
     ipcRenderer.on('file-opened', (_: any, filePath: string) => callback(filePath)),
 
   // 移除监听器
-  removeAllListeners: (channel: string) => ipcRenderer.removeAllListeners(channel)
+  removeAllListeners: (channel: string) => ipcRenderer.removeAllListeners(channel),
+
+  // 工作目录
+  getWorkspace: () => ipcRenderer.invoke('workspace:get'),
+
+  // 配置读写（SQLite 实例）
+  getSetting: (key: string) => ipcRenderer.invoke('settings:get', key),
+  setSetting: (key: string, value: string) => ipcRenderer.invoke('settings:set', key, value)
 }
 
 contextBridge.exposeInMainWorld('electronAPI', api)

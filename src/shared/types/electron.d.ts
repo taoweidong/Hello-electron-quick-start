@@ -62,6 +62,18 @@ export interface PerformanceInfo {
   cpuCores: number
 }
 
+/** 应用工作目录信息 */
+export interface WorkspaceInfo {
+  path: string
+  fallback: boolean
+}
+
+/** 配置写入结果 */
+export interface SettingWriteResult {
+  success: boolean
+  error?: string
+}
+
 /**
  * preload 暴露给渲染进程的安全 API。
  * 必须与 src/main/preload.ts 中的 contextBridge 实现保持一致。
@@ -96,4 +108,9 @@ export interface ElectronAPI {
   // 事件监听
   onFileOpened: (callback: (filePath: string) => void) => void
   removeAllListeners: (channel: string) => void
+
+  // 工作目录与配置（SQLite 实例）
+  getWorkspace: () => Promise<WorkspaceInfo>
+  getSetting: (key: string) => Promise<string | null>
+  setSetting: (key: string, value: string) => Promise<SettingWriteResult>
 }
