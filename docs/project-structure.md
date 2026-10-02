@@ -32,6 +32,7 @@
 │       ├── constants/      #   常量（仅 index.ts，单一来源）
 │       └── types/          #   共享类型（electron.d.ts，含 ElectronAPI 完整定义）
 ├── test-main.js            # 冒烟测试（npm run electron:test，自动退出）
+├── eslint.config.mjs       # ESLint 10 flat config（根目录，生效配置）
 ├── electron-builder.json   # 打包配置（根目录，生效配置）
 ├── vite.config.ts          # Vite 配置（根目录，生效配置）
 ├── tsconfig.json           # TS 基础配置（路径别名）
