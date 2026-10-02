@@ -3,8 +3,7 @@ import { promises as fsp, existsSync, mkdirSync } from 'node:fs'
 import { readFile, writeFile, access, constants } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import JSZip from 'jszip'
-// @ts-expect-error unrar 包没有类型声明
-import Unrar from 'unrar'
+import { createExtractorFromData } from 'node-unrar-js'
 
 // 文件操作处理器
 ipcMain.handle('file:read', async (event, filePath: string) => {
@@ -89,7 +88,7 @@ ipcMain.handle('zip:extract', async (event, zipPath: string, extractPath: string
   }
 })
 
-// RAR 文件解压处理器
+// RAR 文件解压处理器（node-unrar-js：WASM 实现，无需外部 unrar 二进制）
 ipcMain.handle('rar:extract', async (event, rarPath: string, extractPath: string) => {
   try {
     // 检查 RAR 文件是否存在
@@ -100,22 +99,24 @@ ipcMain.handle('rar:extract', async (event, rarPath: string, extractPath: string
       mkdirSync(extractPath, { recursive: true })
     }
 
-    // 使用 unrar 解压文件
-    const rar = new Unrar(rarPath)
-    const entries = await rar.getEntries()
+    const raw = await fsp.readFile(rarPath)
+    const data = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength) as ArrayBuffer
+    const extractor = await createExtractorFromData({ data })
 
     const extractedFiles: any[] = []
 
-    for (const entry of entries) {
-      const fullPath = join(extractPath, entry.name)
+    const extracted = extractor.extract({})
+    for (const entry of extracted.files) {
+      const header = entry.fileHeader
+      const fullPath = join(extractPath, header.name)
 
-      if (entry.isDirectory) {
+      if (header.flags && header.flags.directory) {
         // 创建目录
         if (!existsSync(fullPath)) {
           mkdirSync(fullPath, { recursive: true })
         }
         extractedFiles.push({
-          name: entry.name,
+          name: header.name,
           path: fullPath,
           isDirectory: true,
           size: 0
@@ -127,15 +128,18 @@ ipcMain.handle('rar:extract', async (event, rarPath: string, extractPath: string
           mkdirSync(parentDir, { recursive: true })
         }
 
-        // 提取文件内容
-        const content = await rar.extract(entry.name)
+        const raw = entry.extraction
+        if (!raw) {
+          return { success: false, error: `RAR 条目解压失败: ${header.name}` }
+        }
+        const content = Buffer.from(raw)
         await fsp.writeFile(fullPath, content)
 
         extractedFiles.push({
-          name: entry.name,
+          name: header.name,
           path: fullPath,
           isDirectory: false,
-          size: entry.uncompressedSize
+          size: content.length
         })
       }
     }

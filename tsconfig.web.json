@@ -9,7 +9,6 @@
     "src/view/src/**/__tests__/*"
   ],
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/view/src/*"],
       "@shared/*": ["./src/shared/*"]
