@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Electron 44 + Vue 3.5 + TypeScript 6 + Vite 8 + Element Plus 桌面应用，面向 Windows（portable / NSIS），产品名 My-Win-App，包名为 CommonJS。要求 Node >= 24（运行时由 Electron 44 内嵌 Node 24.21）。
+Electron 44 + Vue 3.5 + TypeScript 6 + Vite 8 + Element Plus 桌面应用，面向 Windows（portable / NSIS），产品名 My-Win-App，包名为 CommonJS。要求 Node >= 24（运行时由 Electron 44 内嵌 Node 24.21）。当前版本 1.0.1。
 
 ## 常用命令
 
@@ -20,6 +20,7 @@ Electron 44 + Vue 3.5 + TypeScript 6 + Vite 8 + Element Plus 桌面应用，面�
 
 - `src/main/` — Electron 主进程（TypeScript，经 `tsconfig.node.json` 编译，package.json 的 main 指向 `dist/main/main/index.js`）。入口创建窗口、写日志到工作目录 `logs/app.log`（`logToFile`）、启动时初始化 SQLite、构建中文应用菜单；IPC 处理器在 `src/main/ipc/`（appHandlers / fileHandlers / workspaceHandlers / settingsHandlers）。
 - 工作目录与数据：`src/main/workspace/` 解析工作目录（默认 `D:\MyWinApp`，env `MYWINAPP_WORKDIR` 覆盖，不可用回落 `userData`），固定 `logs/`、`data/`、`config/` 子布局；`src/main/db/` 基于 `node:sqlite`（Node 24 内置）持有 `data/app.db`（WAL），启动时建库建表（`settings` 键值表），IPC `settings:get` / `settings:set` / `workspace:get` 提供配置读写与目录信息。
+- 自动更新：`src/main/updater/` 基于 electron-updater（generic provider），三级更新源 env `MYWINAPP_UPDATE_URL` > settings 表 `update.url` > 打包内置 `app-update.yml`；`autoDownload` + `autoInstallOnAppQuit`，启动延迟 5s 自动检查；状态经 `update:status` 事件推送，IPC `update:check` / `update:install` / `update:get-status`。**发布流程**：`build:prod` 后将 `release/` 下的 `latest.yml`、`My-Win-App-<版本>-x64.exe`、`.blockmap` 三件套上传到更新源服务器；仅 NSIS 安装版可自更新，portable 需手动分发。
 - `src/view/` — Vue 3 渲染进程。**Vite 的 root 是 `src/view` 而非项目根**，构建输出 `dist/view`。入口 `src/view/src/main.ts`；页面在 `views/`（Home / Files / Settings / About）；Pinia 在 `store/`；路由在 `router/`。
 - `src/shared/` — 主/渲染进程共享代码，别名 `@shared`。
 - 主进程构建的关键：`tsconfig.node.json` 的 `rootDir` 是 `./src`（不是 `./src/main`），产物布局为 `dist/main/main/**` + `dist/main/shared/**`，源码里的相对导入（`../../shared/constants`）在产物中原样成立，**不需要任何编译后处理脚本**。

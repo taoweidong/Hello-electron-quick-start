@@ -19,6 +19,7 @@
 │   │   ├── preload.ts      #   contextBridge 暴露 window.electronAPI
 │   │   ├── workspace/      #   工作目录解析（默认 D:\MyWinApp，env 覆盖，回落 userData）
 │   │   ├── db/             #   node:sqlite 数据库单例与 settings 键值表（data/app.db，WAL）
+│   │   ├── updater/        #   electron-updater 自动更新（三级更新源、状态机、事件推送）
 │   │   └── ipc/            #   ipcMain.handle 处理器（appHandlers / fileHandlers /
 │   │                       #   workspaceHandlers / settingsHandlers）
 │   ├── view/               # Vue 3 渲染进程（Vite root）
