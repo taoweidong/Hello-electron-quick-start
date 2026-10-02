@@ -1,4 +1,4 @@
-import type { ElectronAPI } from '@shared/types/electron'
+import type { ElectronAPI, UpdateStatusInfo } from '@shared/types/electron'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 // 暴露安全的 API 给渲染进程（类型以 @shared/types/electron 的 ElectronAPI 为准）
@@ -41,7 +41,14 @@ const api: ElectronAPI = {
 
   // 配置读写（SQLite 实例）
   getSetting: (key: string) => ipcRenderer.invoke('settings:get', key),
-  setSetting: (key: string, value: string) => ipcRenderer.invoke('settings:set', key, value)
+  setSetting: (key: string, value: string) => ipcRenderer.invoke('settings:set', key, value),
+
+  // 自动更新
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  getUpdateStatus: () => ipcRenderer.invoke('update:get-status'),
+  onUpdateStatus: (callback: (status: UpdateStatusInfo) => void) =>
+    ipcRenderer.on('update:status', (_: any, status: UpdateStatusInfo) => callback(status))
 }
 
 contextBridge.exposeInMainWorld('electronAPI', api)

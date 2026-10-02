@@ -74,6 +74,16 @@ export interface SettingWriteResult {
   error?: string
 }
 
+/** 自动更新状态 */
+export interface UpdateStatusInfo {
+  type: 'idle' | 'checking' | 'latest' | 'available' | 'downloading' | 'downloaded' | 'error'
+  info?: string
+  percent?: number
+  error?: string
+  version: string
+  feedUrl: string
+}
+
 /**
  * preload 暴露给渲染进程的安全 API。
  * 必须与 src/main/preload.ts 中的 contextBridge 实现保持一致。
@@ -113,4 +123,10 @@ export interface ElectronAPI {
   getWorkspace: () => Promise<WorkspaceInfo>
   getSetting: (key: string) => Promise<string | null>
   setSetting: (key: string, value: string) => Promise<SettingWriteResult>
+
+  // 自动更新
+  checkForUpdates: () => Promise<UpdateStatusInfo>
+  installUpdate: () => Promise<void>
+  getUpdateStatus: () => Promise<UpdateStatusInfo>
+  onUpdateStatus: (callback: (status: UpdateStatusInfo) => void) => void
 }

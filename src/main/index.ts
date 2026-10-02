@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { appendFileSync } from 'node:fs'
 import { getLogsDir } from './workspace'
 import { getDb } from './db'
+import { initUpdater } from './updater'
 
 // 写日志到工作目录 logs/app.log（工作目录不可用时回落 userData），便于排查运行问题
 function logToFile(message: string) {
@@ -95,6 +96,8 @@ app.whenReady().then(() => {
   } catch (error: any) {
     logToFile(`Database init failed: ${error.message}`)
   }
+  // 自动更新（三级更新源，启动延迟自动检查）
+  initUpdater((msg) => logToFile(`[updater] ${msg}`))
   createWindow()
 }).catch(error => {
   logToFile(`Failed to create window: ${error.message}`)
