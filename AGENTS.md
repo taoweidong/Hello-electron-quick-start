@@ -18,7 +18,8 @@ Electron 44 + Vue 3.5 + TypeScript 6 + Vite 8 + Element Plus 桌面应用，面�
 
 ## 架构
 
-- `src/main/` — Electron 主进程（TypeScript，经 `tsconfig.node.json` 编译，package.json 的 main 指向 `dist/main/main/index.js`）。入口创建窗口、写日志到 `userData/app.log`（`logToFile`）、构建中文应用菜单；IPC 处理器在 `src/main/ipc/`（appHandlers / fileHandlers）。
+- `src/main/` — Electron 主进程（TypeScript，经 `tsconfig.node.json` 编译，package.json 的 main 指向 `dist/main/main/index.js`）。入口创建窗口、写日志到工作目录 `logs/app.log`（`logToFile`）、启动时初始化 SQLite、构建中文应用菜单；IPC 处理器在 `src/main/ipc/`（appHandlers / fileHandlers / workspaceHandlers / settingsHandlers）。
+- 工作目录与数据：`src/main/workspace/` 解析工作目录（默认 `D:\MyWinApp`，env `MYWINAPP_WORKDIR` 覆盖，不可用回落 `userData`），固定 `logs/`、`data/`、`config/` 子布局；`src/main/db/` 基于 `node:sqlite`（Node 24 内置）持有 `data/app.db`（WAL），启动时建库建表（`settings` 键值表），IPC `settings:get` / `settings:set` / `workspace:get` 提供配置读写与目录信息。
 - `src/view/` — Vue 3 渲染进程。**Vite 的 root 是 `src/view` 而非项目根**，构建输出 `dist/view`。入口 `src/view/src/main.ts`；页面在 `views/`（Home / Files / Settings / About）；Pinia 在 `store/`；路由在 `router/`。
 - `src/shared/` — 主/渲染进程共享代码，别名 `@shared`。
 - 主进程构建的关键：`tsconfig.node.json` 的 `rootDir` 是 `./src`（不是 `./src/main`），产物布局为 `dist/main/main/**` + `dist/main/shared/**`，源码里的相对导入（`../../shared/constants`）在产物中原样成立，**不需要任何编译后处理脚本**。
@@ -35,5 +36,5 @@ Electron 44 + Vue 3.5 + TypeScript 6 + Vite 8 + Element Plus 桌面应用，面�
 - **`src/shared/constants/index.ts` 是唯一版本**，不要再生成/提交编译产物（.js/.d.ts）。
 - dev 端口固定 5180：vite.config.ts（strictPort）与 electron:dev 的 wait-on 都依赖它，不要改。
 - 打包配置在根目录 `electron-builder.json`（win: portable + nsis x64，输出 `release/`）。`files` 不含 node_modules——electron-builder 自动附带生产依赖，不要手动加回去。
-- 排查运行时问题先看 `userData/app.log`（主进程 logToFile）。
+- 排查运行时问题先看工作目录下的 `logs/app.log`（默认 `D:\MyWinApp\logs\app.log`；工作目录不可用回落 `userData` 时在 `userData/logs/app.log`）。
 - `docs/project-structure.md` 已与实际结构同步，改动结构时记得更新它。

@@ -15,9 +15,12 @@
 ├── release/                # electron-builder 打包输出（gitignore）
 ├── src/
 │   ├── main/               # Electron 主进程（TypeScript）
-│   │   ├── index.ts        #   入口：窗口、菜单、日志（userData/app.log）
+│   │   ├── index.ts        #   入口：窗口、菜单、日志（工作目录 logs/app.log）、SQLite 初始化
 │   │   ├── preload.ts      #   contextBridge 暴露 window.electronAPI
-│   │   └── ipc/            #   ipcMain.handle 处理器（appHandlers / fileHandlers）
+│   │   ├── workspace/      #   工作目录解析（默认 D:\MyWinApp，env 覆盖，回落 userData）
+│   │   ├── db/             #   node:sqlite 数据库单例与 settings 键值表（data/app.db，WAL）
+│   │   └── ipc/            #   ipcMain.handle 处理器（appHandlers / fileHandlers /
+│   │                       #   workspaceHandlers / settingsHandlers）
 │   ├── view/               # Vue 3 渲染进程（Vite root）
 │   │   ├── index.html
 │   │   └── src/
