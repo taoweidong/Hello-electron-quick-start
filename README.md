@@ -1,182 +1,71 @@
-# Electron + Vue 3 + TypeScript + Vite + Element Plus 现代化桌面应用开发方案
+# My-Win-App
 
-## 技术栈版本信息
+基于 **Electron 44 + Vue 3.5 + TypeScript 6 + Vite 8 + Element Plus** 的 Windows 桌面应用（My-Win-App），面向 portable / NSIS 双分发形态，内置工作目录管理、SQLite 配置存储与自动升级能力。
 
 | 技术 | 版本 | 说明 |
 |------|------|------|
-| **Electron** | ^28.1.0 | 当前最新稳定版 |
-| **Vue** | ^3.4.15 | Vue 3 最新稳定版 |
-| **TypeScript** | ^5.4.5 | TypeScript 最新稳定版 |
-| **Vite** | ^5.2.0 | Vite 最新稳定版 |
-| **Element Plus** | ^2.4.4 | Element Plus 最新稳定版 |
-| **Node.js** | >=18.0.0 | 运行时要求 |
-
-## 项目目录结构
-
-```
-my-electron-app/
-├── build/                          # 构建相关配置
-│   └── icons/                      # 应用图标资源
-├── dist/                           # Vite 构建输出
-├── node_modules/
-├── release/                        # Electron 打包输出
-├── src/
-│   ├── main/                       # Electron 主进程
-│   │   ├── index.ts                # 主进程入口
-│   │   ├── preload.ts              # 预加载脚本
-│   │   └── ipc/                    # IPC 通信处理
-│   │       ├── index.ts
-│   │       ├── fileHandlers.ts
-│   │       └── appHandlers.ts
-│   ├── view/                       # Vue 渲染进程 (原 renderer 目录)
-│   │   ├── src/
-│   │   │   ├── assets/             # 静态资源
-│   │   │   ├── components/         # 公共组件
-│   │   │   ├── views/              # 页面组件
-│   │   │   ├── store/              # Pinia 状态管理
-│   │   │   ├── router/             # Vue Router
-│   │   │   ├── utils/              # 工具函数
-│   │   │   ├── types/              # TypeScript 类型定义
-│   │   │   ├── styles/             # 全局样式
-│   │   │   ├── App.vue             # 根组件
-│   │   │   └── main.ts             # 渲染进程入口
-│   │   └── index.html              # HTML 模板
-│   └── shared/                     # 共享代码
-│       ├── types/                  # 共享类型定义
-│       └── constants/              # 共享常量
-├── package.json
-├── tsconfig.json                   # TypeScript 根配置
-├── tsconfig.node.json              # Node 环境配置
-├── tsconfig.web.json               # Web 环境配置
-├── vite.config.ts                  # Vite 配置
-├── electron-builder.json           # Electron Builder 配置
-└── README.md
-```
+| **Electron** | 44.5.1 | 运行时内嵌 Node 24.21 / Chromium 152 |
+| **Vue** | 3.5.43 | 渲染进程（vue-router 5 / Pinia 4） |
+| **Element Plus** | 2.14.7 | UI 组件库 |
+| **TypeScript** | 6.0.3 | TS 7 原生编译器暂不兼容 vue-tsc（锁定 6.x） |
+| **Vite** | 8.3.2 | Rolldown 引擎，渲染进程构建 |
+| **electron-builder** | 26.15.3 | portable + NSIS x64 打包 |
+| **electron-updater** | 6.8.9 | generic provider 自动升级 |
+| **Node.js** | >= 24 | 开发环境要求（engines 已约束） |
 
 ## 核心功能
 
-### 1. 应用窗口管理
-- 窗口最小化、最大化/还原、关闭
-- 自定义标题栏，支持拖拽
-- 窗口控制按钮（最小化、最大化、关闭）
+- **文件管理页（Files，默认路由）**：拖拽 ZIP/RAR 到窗口即解压并生成文件树；点击文件按类型分发渲染（文本内容、图片预览、压缩包提示）。ZIP 走 jszip、RAR 走 node-unrar-js（WASM，免外部二进制），解压均在主进程完成。
+- **设置页（Settings）**：工作目录展示（含回落状态）、主题偏好读写示例（持久化到 SQLite `settings` 表，重启仍生效）、软件更新卡片（检查更新、下载进度、立即安装）。
+- **工作目录**：默认 `D:\MyWinApp`（环境变量 `MYWINAPP_WORKDIR` 覆盖），统一承载 `logs/`（应用日志）、`data/`（SQLite 数据库）、`config/`（配置预留）；目标盘不可用时自动回落 `userData`。
+- **SQLite 存储**：`node:sqlite`（Node 24 内置，零原生依赖）单例连接 `data/app.db`（WAL），`settings` 键值表经 IPC 读写，缺失键返回空值不抛错。
+- **自动升级**：generic provider 三级更新源（环境变量 `MYWINAPP_UPDATE_URL` > 配置存储 `update.url` > 打包内置地址）；启动自动检查 + 手动检查；发现新版本自动下载（差量优先），退出时自动安装或立即重启安装。
+- **应用基座**：中文应用菜单、单实例锁、外部链接系统浏览器打开、安全基线（contextIsolation / 无 nodeIntegration）。
 
-### 2. 文件操作
-- 打开文件对话框
-- 保存文件对话框
-- 文件读取和写入
+## 架构速览
 
-### 3. 系统信息获取
-- 应用版本信息
-- 操作系统平台信息
-- 系统架构信息
-- Node.js、Electron、Chrome 版本信息
-- 内存使用情况
-- CPU 核心数
-
-### 4. 菜单系统
-- 标准应用菜单（文件、编辑、视图、帮助）
-- 快捷键支持
-
-### 5. 路由管理
-- 基于 Vue Router 的单页面应用
-- 侧边栏导航菜单
-- 页面路由切换
-
-### 6. 状态管理
-- 基于 Pinia 的状态管理
-- 持久化存储支持
-
-## IPC 通信机制
-
-### 主进程暴露的 API
-- `showOpenDialog`: 显示打开文件对话框
-- `showSaveDialog`: 显示保存文件对话框
-- `readFile`: 读取文件内容
-- `writeFile`: 写入文件内容
-- `getAppVersion`: 获取应用版本
-- `getPlatform`: 获取操作系统平台
-- `getAppInfo`: 获取应用信息
-- `getSystemInfo`: 获取系统信息
-- `getPerformanceInfo`: 获取性能信息
-- `minimizeWindow`: 最小化窗口
-- `maximizeWindow`: 最大化/还原窗口
-- `closeWindow`: 关闭窗口
-
-### 渲染进程调用方式
-```typescript
-// 打开文件对话框
-const result = await window.electronAPI.showOpenDialog(options)
-
-// 读取文件
-const fileContent = await window.electronAPI.readFile(filePath)
-
-// 获取应用版本
-const version = await window.electronAPI.getAppVersion()
-
-// 窗口控制
-await window.electronAPI.minimizeWindow()
+```
+src/
+├── main/       # 主进程：入口（窗口/菜单/日志）、preload、workspace/ db/ updater/、ipc/ 处理器
+├── view/       # 渲染进程：Vite root，页面 / services / store / router / 类型
+└── shared/     # 共享层：ElectronAPI 类型单一来源 + 常量（别名 @shared）
 ```
 
-## 构建和部署
+- **IPC 约定**：渲染进程经 `window.electronAPI`（contextBridge）调用，主进程 `ipcMain.handle`；新增通道需 preload / handler / 类型三处同步。通道全集见 `src/main/preload.ts`：文件读写与解压、应用/系统/性能信息、窗口控制、拖拽取路径（`webUtils.getPathForFile`）、工作目录、配置读写、更新检查/安装/状态与 `update:status` 推送事件。
+- 详细目录结构与构建要点：[docs/project-structure.md](docs/project-structure.md)；面向 AI/代理的工作约定：[AGENTS.md](AGENTS.md)。
 
-### 开发模式运行
+## 常用命令
 
 ```bash
-# 安装依赖
-npm install
-
-# 开发模式运行
-npm run electron:dev
+npm run electron:dev     # 开发模式：编译主进程 + Vite(5180) + Electron（热更新）
+npm run type-check       # 真实全量类型检查（vue-tsc + tsc 双进程）
+npm run lint             # ESLint 10（flat config）检查并自动修复
+npm run build            # 类型检查 + 主进程编译 + Vite 构建 + electron-builder --dir
+npm run build:prod       # 产出 NSIS 安装包 + portable（含 latest.yml / blockmap）
+npm run build:portable   # 仅便携版
+npm run electron:test    # 冒烟测试：加载构建产物并自动退出（需先 build）
+npm run clean            # 清理 dist / release / *.tsbuildinfo
 ```
 
-### 构建命令
+无单元测试框架；改动验证链为 `type-check` → `lint` → `build` → `electron:test`，再手动跑 `electron:dev` 确认窗口行为。
 
-```bash
-# 类型检查
-npm run type-check
+## 发布与自动升级
 
-# 代码检查
-npm run lint
+1. `npm version <新版本>` 后 `npm run build:prod`；
+2. 将 `release/` 下三件套上传到更新源服务器（静态文件服务即可）：`latest.yml`、`My-Win-App-<版本>-x64.exe`、`My-Win-App-<版本>-x64.exe.blockmap`；
+3. 客户端侧三选一指定更新源：环境变量 `MYWINAPP_UPDATE_URL`、`settings` 表写入 `update.url`、或修改 `electron-builder.json` 中的默认地址后重新打包；
+4. 已安装的 NSIS 版本客户端会自动检查 → 下载 → 在退出时安装（设置页可"立即安装并重启"）。
 
-# 构建应用
-npm run build
+> 限制：仅 NSIS 安装版支持自更新，portable 版需手动分发；构建未签名，Windows 可能提示发布者未知（不影响升级功能）。
 
-# 构建生产版本
-npm run build:prod
+## 目录与数据
 
-# 构建便携版 (双击运行的exe)
-npm run build:portable
-```
+- 安装版默认安装到 `%LOCALAPPDATA%\Programs\My-Win-App`；
+- 工作目录默认 `D:\MyWinApp`：`logs\app.log` 排障日志、`data\app.db` SQLite 数据库（WAL）、`config\` 配置预留；
+- 升级缓存位于 `%LOCALAPPDATA%\my-win-app-updater`。
 
-### 便携版特性
+## 文档索引
 
-- **独立运行**: 无需安装，双击即可运行
-- **绿色环保**: 不向系统写入注册表信息
-- **易于分发**: 单个exe文件，方便分享和部署
-- **数据隔离**: 应用数据存储在应用同级目录
-
-## 项目特点
-
-### 技术优势
-
-1. **现代化技术栈**: 使用最新的稳定版本技术栈
-2. **类型安全**: 完整的 TypeScript 支持
-3. **开发体验**: 热重载、类型检查、代码提示
-4. **构建优化**: Vite 快速构建，Electron Builder 专业打包
-5. **安全可靠**: 上下文隔离、安全的 IPC 通信
-
-### 架构优势
-
-1. **模块化设计**: 清晰的目录结构，便于维护
-2. **组件化开发**: Vue 3 + Element Plus 组件库
-3. **状态管理**: Pinia 状态管理方案
-4. **路由管理**: Vue Router 单页面导航
-5. **类型共享**: 主进程和渲染进程类型安全
-
-### 产品化特性
-
-1. **专业界面**: Element Plus 现代化 UI
-2. **原生体验**: 完整的菜单系统和窗口控制
-3. **文件操作**: 完整的文件读写能力
-4. **多平台支持**: Windows、macOS、Linux
-5. **便携版本**: 绿色版应用支持
+- [docs/project-structure.md](docs/project-structure.md) — 目录结构、构建要点与关键约定
+- [AGENTS.md](AGENTS.md) — 常用命令、架构与陷阱（面向 AI 代理）
+- [openspec/specs/](openspec/specs/) — 能力规格（workspace-directory / sqlite-storage / auto-update）

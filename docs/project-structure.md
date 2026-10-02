@@ -12,6 +12,7 @@
 │   │   └── shared/         #   ← src/shared 的产物（供主进程运行时引用）
 │   └── view/               # Vite 构建输出（Vite root 为 src/view）
 ├── docs/                   # 项目文档
+├── openspec/               # OpenSpec 规划与规格（specs/ 主规格库 + changes/ 与 archive/）
 ├── release/                # electron-builder 打包输出（gitignore）
 ├── src/
 │   ├── main/               # Electron 主进程（TypeScript）
@@ -21,13 +22,13 @@
 │   │   ├── db/             #   node:sqlite 数据库单例与 settings 键值表（data/app.db，WAL）
 │   │   ├── updater/        #   electron-updater 自动更新（三级更新源、状态机、事件推送）
 │   │   └── ipc/            #   ipcMain.handle 处理器（appHandlers / fileHandlers /
-│   │                       #   workspaceHandlers / settingsHandlers）
+│   │                       #   workspaceHandlers / settingsHandlers / updateHandlers）
 │   ├── view/               # Vue 3 渲染进程（Vite root）
 │   │   ├── index.html
 │   │   └── src/
 │   │       ├── components/ #   公共组件与文件渲染器（renderers/）
 │   │       ├── services/   #   文件渲染/解压服务（Zip / Rar / Text / Image）
-│   │       ├── views/      #   页面（Home / Files / Settings / About）
+│   │       ├── views/      #   页面（Files / Settings 已注册路由；Home / About 文件保留）
 │   │       ├── store/      #   Pinia
 │   │       ├── router/     #   Vue Router
 │   │       ├── types/      #   渲染进程类型声明（含 Window.electronAPI 全局增强）
