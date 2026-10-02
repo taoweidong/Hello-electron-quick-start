@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-02
+goal: 在 Node 24+ 生态上以最新稳定依赖栈运行，功能与打包行为不回退
+skip_specs: true

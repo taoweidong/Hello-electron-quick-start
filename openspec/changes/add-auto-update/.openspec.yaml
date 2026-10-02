@@ -1,0 +1,3 @@
+schema: spec-driven
+created: 2026-10-02
+goal: 客户端接入远端更新源，实现检查、下载、安装的自动升级闭环
