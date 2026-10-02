@@ -78,6 +78,9 @@ export interface ElectronAPI {
   readDir: (path: string) => Promise<{ success: boolean; files?: FileInfo[]; error?: string }>
   getAppPath: (name: string) => Promise<string>
 
+  /** 获取拖拽 File 对象的真实磁盘路径（Electron 32+ 移除 File.path 后的官方替代） */
+  getPathForFile: (file: File) => string
+
   // 应用操作
   getAppVersion: () => Promise<string>
   getPlatform: () => Promise<string>

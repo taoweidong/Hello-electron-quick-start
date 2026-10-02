@@ -230,8 +230,9 @@ const handleDrop = async (event: DragEvent) => {
     const userDataPath = await window.electronAPI.getAppPath('userData')
     const extractPath = `${userDataPath}/extracted/${Date.now()}`
 
-    // 调用解压器解压文件
-    const result = await extractor.extract(file.path, extractPath)
+    // 调用解压器解压文件（Electron 32+ 移除 File.path，经 webUtils 获取真实路径）
+    const filePath = window.electronAPI.getPathForFile(file)
+    const result = await extractor.extract(filePath, extractPath)
     
     if (result.success) {
       // 构建文件树结构

@@ -1,5 +1,5 @@
 import type { ElectronAPI } from '@shared/types/electron'
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 // 暴露安全的 API 给渲染进程（类型以 @shared/types/electron 的 ElectronAPI 为准）
 const api: ElectronAPI = {
@@ -13,6 +13,9 @@ const api: ElectronAPI = {
   getFileInfo: (path: string) => ipcRenderer.invoke('file:getInfo', path),
   readDir: (path: string) => ipcRenderer.invoke('file:readDir', path),
   getAppPath: (name: string) => ipcRenderer.invoke('app:getPath', name),
+
+  // 拖拽文件取真实路径（Electron 32+ 移除了 DOM File.path，官方替代为 webUtils）
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
 
   // 应用操作
   getAppVersion: () => ipcRenderer.invoke('app:getVersion'),

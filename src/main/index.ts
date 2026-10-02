@@ -1,5 +1,4 @@
 import { app, BrowserWindow, Menu, shell, dialog } from 'electron'
-import { release } from 'node:os'
 import { join } from 'node:path'
 import { appendFileSync } from 'node:fs'
 
@@ -20,9 +19,6 @@ const distViewDir = join(__dirname, '../../view')
 const indexHtml = join(distViewDir, 'index.html')
 const preload = join(__dirname, 'preload.js')
 const url = process.env.VITE_DEV_SERVER_URL
-
-// 禁用 Windows 7 的 GPU 加速
-if (release().startsWith('6.1')) app.disableHardwareAcceleration()
 
 // 设置 Windows 10+ 通知的应用名称
 if (process.platform === 'win32') app.setAppUserModelId(app.getName())
