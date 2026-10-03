@@ -38,7 +38,9 @@
 │       └── types/          #   共享类型（electron.d.ts，含 ElectronAPI 完整定义）
 ├── test-main.js            # 冒烟测试（npm run electron:test，自动退出）
 ├── scripts/
-│   └── pack-single.js      # 一键打包脚本（npm run build:single，含产物核验与回显）
+│   ├── pack-single.js      # 一键打包脚本（npm run build:single，含产物核验与回显）
+│   └── release.js          # 发布流水线（npm run release：对账核验 + 归集 + PUT 上传 + 校验）
+├── release.config.json     # 发布配置（upload.url；凭据经 RELEASE_UPLOAD_AUTH 环境变量）
 ├── 一键打包.bat             # Windows 双击入口（调用 build:single，UTF-8 + CRLF）
 ├── eslint.config.mjs       # ESLint 10 flat config（根目录，生效配置）
 ├── electron-builder.json   # 打包配置（根目录，生效配置）

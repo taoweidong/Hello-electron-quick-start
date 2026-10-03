@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-03
+goal: npm run release 一条命令完成从源码到更新源可用的发布闭环，含覆盖保护与上传后校验
+skip_specs: true

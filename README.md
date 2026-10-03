@@ -52,8 +52,8 @@ npm run clean            # 清理 dist / release / *.tsbuildinfo
 
 ## 发布与自动升级
 
-1. `npm version <新版本>` 后 `npm run build:prod`；
-2. 将 `release/` 下三件套上传到更新源服务器（静态文件服务即可）：`latest.yml`、`My-Win-App-<版本>-x64.exe`、`My-Win-App-<版本>-x64.exe.blockmap`；
+1. `npm version <新版本>`；
+2. **一键发布**：`npm run release` —— 构建 → 三件套对账核验（版本与哈希双重一致性）→ 归集到 `dist-release/<版本>/` → 经 HTTP PUT 上传更新源 → 上传后校验。只需先在 `release.config.json` 配好 `upload.url`（更新源目录需预建且支持 PUT/WebDAV），有认证时设环境变量 `RELEASE_UPLOAD_AUTH=user:pass`；远端已有同版本默认拒绝（`--force` 覆盖）。仅核验归集不上传用 `npm run release:collect`；
 3. 客户端侧三选一指定更新源：环境变量 `MYWINAPP_UPDATE_URL`、`settings` 表写入 `update.url`、或修改 `electron-builder.json` 中的默认地址后重新打包；
 4. 已安装的 NSIS 版本客户端会自动检查 → 下载 → 在退出时安装（设置页可"立即安装并重启"）。
 
