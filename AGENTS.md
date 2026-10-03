@@ -11,6 +11,7 @@ Electron 44 + Vue 3.5 + TypeScript 6 + Vite 8 + Element Plus 桌面应用，面�
 - `npm run build` — 类型检查 + 编译主进程 + Vite 构建 + electron-builder --dir
 - `npm run build:prod` — 产出 NSIS 安装包（--publish=never）
 - `npm run build:portable` — 产出 Windows 便携版 exe
+- `npm run build:single` — 一键打包单一 EXE：复用构建链 + 产物核验（存在/体积/版本一致性/sha512）+ 结果回显；`node scripts/pack-single.js --verify-only` 仅复检既有产物；仓库根 `一键打包.bat` 为双击入口
 - `npm run electron:test` — 冒烟测试：加载构建产物并自动退出（exit 0 成功 / 1 失败），需先 `npm run build`
 - `npm run clean` — 清理 dist / release / *.tsbuildinfo
 

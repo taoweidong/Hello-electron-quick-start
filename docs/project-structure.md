@@ -37,6 +37,9 @@
 │       ├── constants/      #   常量（仅 index.ts，单一来源）
 │       └── types/          #   共享类型（electron.d.ts，含 ElectronAPI 完整定义）
 ├── test-main.js            # 冒烟测试（npm run electron:test，自动退出）
+├── scripts/
+│   └── pack-single.js      # 一键打包脚本（npm run build:single，含产物核验与回显）
+├── 一键打包.bat             # Windows 双击入口（调用 build:single，UTF-8 + CRLF）
 ├── eslint.config.mjs       # ESLint 10 flat config（根目录，生效配置）
 ├── electron-builder.json   # 打包配置（根目录，生效配置）
 ├── vite.config.ts          # Vite 配置（根目录，生效配置）

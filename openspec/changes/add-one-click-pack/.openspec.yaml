@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-02
+goal: 一条命令从源码到经过核验的 portable 单一 EXE，产物可追溯（路径/体积/版本/哈希）
+skip_specs: true
