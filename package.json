@@ -14,6 +14,8 @@
     "build:prod": "npm run type-check && npm run compile:main && vite build && electron-builder build --publish=never",
     "build:portable": "npm run type-check && npm run compile:main && vite build && electron-builder build --publish=never --win=portable",
     "build:single": "node scripts/pack-single.js",
+    "release": "node scripts/release.js",
+    "release:collect": "node scripts/release.js --no-upload",
     "electron:test": "electron test-main.js",
     "electron:pack": "electron-builder",
     "type-check": "vue-tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",

@@ -115,6 +115,7 @@ dist/
 # Electron build files
 dist/
 release/
+dist-release/
 
 # IDE files
 .vscode/
