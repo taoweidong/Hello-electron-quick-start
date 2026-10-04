@@ -21,6 +21,16 @@ export function getDb(): DatabaseSync {
   return db
 }
 
+// 退出前释放句柄并落盘 WAL，否则 data/ 下可能残留 app.db-wal / app.db-shm
+export function closeDb(): void {
+  if (!db) return
+  try {
+    db.close()
+  } finally {
+    db = null
+  }
+}
+
 export function getSetting(key: string): string | null {
   const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key) as
     | { value: string }

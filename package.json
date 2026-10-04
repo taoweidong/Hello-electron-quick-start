@@ -18,8 +18,10 @@
     "release:collect": "node scripts/release.js --no-upload",
     "electron:test": "electron test-main.js",
     "electron:pack": "electron-builder",
-    "type-check": "vue-tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
+    "type-check": "vue-tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.test.json",
     "lint": "eslint . --fix",
+    "test": "tsc -p tsconfig.test.json && node --test \"dist-test/tests/**/*.test.js\"",
+    "test:watch": "tsc -p tsconfig.test.json && node --test --watch \"dist-test/tests/**/*.test.js\"",
     "preview": "vite preview",
     "clean": "rimraf dist release *.tsbuildinfo"
   },

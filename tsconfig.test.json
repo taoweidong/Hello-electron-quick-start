@@ -1,0 +1,22 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.json",
+  "include": [
+    "./tests/**/*"
+  ],
+  "compilerOptions": {
+    "types": ["node"],
+    "lib": ["ES2022"],
+    "target": "ES2022",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "verbatimModuleSyntax": false,
+    "skipLibCheck": true,
+    "outDir": "./dist-test",
+    "rootDir": ".",
+    "paths": {
+      "@shared/*": ["./src/shared/*"]
+    }
+  }
+}

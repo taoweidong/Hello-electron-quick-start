@@ -1,18 +1,22 @@
 import { app, BrowserWindow, Menu, shell, dialog } from 'electron'
 import { join } from 'node:path'
-import { appendFileSync } from 'node:fs'
-import { getLogsDir } from './workspace'
-import { getDb } from './db'
+import { resolveWorkspace } from './workspace'
+import { getDb, closeDb } from './db'
 import { initUpdater } from './updater'
+import { logInfo, logWarn, logError, logErrorWithStack } from './logger'
 
-// 写日志到工作目录 logs/app.log（工作目录不可用时回落 userData），便于排查运行问题
-function logToFile(message: string) {
-  const logPath = join(getLogsDir(), 'app.log')
-  const timestamp = new Date().toISOString()
+// 渲染层可请求用系统浏览器打开的外链域名白名单（其余一律拒绝，见方案 B1/S4）
+const ALLOWED_EXTERNAL_HOSTS = ['github.com']
+
+function isAllowedExternalUrl(target: string): boolean {
   try {
-    appendFileSync(logPath, `[${timestamp}] ${message}\n`)
+    const parsed = new URL(target)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false
+    return ALLOWED_EXTERNAL_HOSTS.some(
+      (host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
+    )
   } catch {
-    // 忽略日志错误
+    return false
   }
 }
 
@@ -21,16 +25,36 @@ function logToFile(message: string) {
 const distViewDir = join(__dirname, '../../view')
 const indexHtml = join(distViewDir, 'index.html')
 const preload = join(__dirname, 'preload.js')
-const url = process.env.VITE_DEV_SERVER_URL
+const devServerUrl = process.env.VITE_DEV_SERVER_URL
+
+// 页面内导航只允许当前载体：开发模式锁到 Vite 源，生产模式锁到本地文件
+// （渲染层一旦注入外部内容，即可经 electronAPI 改写更新源，见方案 §4 的 RCE 链）
+function isAllowedNavigation(target: string): boolean {
+  try {
+    const parsed = new URL(target)
+    if (devServerUrl) return parsed.origin === new URL(devServerUrl).origin
+    return parsed.protocol === 'file:'
+  } catch {
+    return false
+  }
+}
 
 // 设置 Windows 10+ 通知的应用名称
 if (process.platform === 'win32') app.setAppUserModelId(app.getName())
 
 if (!app.requestSingleInstanceLock()) {
-  logToFile('App already running, exiting')
+  logInfo('App already running, exiting')
   app.quit()
   process.exit(0)
 }
+
+// 进程级兜底：记录现场但不退出，避免偶发异常升级成崩溃（方案 B1/S5）
+process.on('uncaughtException', (error) => {
+  logErrorWithStack('ERROR', error)
+})
+process.on('unhandledRejection', (reason) => {
+  logErrorWithStack('ERROR', reason)
+})
 
 let win: BrowserWindow | null = null
 
@@ -53,17 +77,45 @@ async function createWindow() {
     transparent: false
   })
 
+  // 外部链接用系统浏览器打开
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (isAllowedExternalUrl(url)) {
+      shell.openExternal(url)
+    } else {
+      logWarn(`拒绝打开外部链接: ${url}`)
+    }
+    return { action: 'deny' }
+  })
+
+  // 拦截页面内导航
+  win.webContents.on('will-navigate', (event, target) => {
+    if (!isAllowedNavigation(target)) {
+      event.preventDefault()
+      logWarn(`拦截页面导航: ${target}`)
+    }
+  })
+
+  // 处理页面加载错误
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+    logError(`Page failed to load: ${errorCode} - ${errorDescription}`)
+  })
+
   // 开发模式加载 Vite 开发服务器，生产模式加载构建产物
-  if (url) {
-    logToFile(`Loading dev server: ${url}`)
-    await win.loadURL(url)
+  if (devServerUrl) {
+    logInfo(`Loading dev server: ${devServerUrl}`)
+    await win.loadURL(devServerUrl)
     win.webContents.openDevTools()
   } else {
-    logToFile(`Loading file: ${indexHtml}`)
+    logInfo(`Loading file: ${indexHtml}`)
     try {
       await win.loadFile(indexHtml)
-    } catch (error: any) {
-      logToFile(`Failed to load file: ${error.message}`)
+    } catch (error) {
+      // 加载失败不显示空窗：给出可见提示后退出（方案 B1/R8）
+      const message = (error as Error)?.message ?? String(error)
+      logError(`Failed to load file: ${message}`)
+      dialog.showErrorBox('启动失败', `无法加载应用页面：\n${indexHtml}\n${message}`)
+      app.quit()
+      return
     }
   }
 
@@ -72,40 +124,44 @@ async function createWindow() {
     win?.show()
   })
 
-  // 外部链接用系统浏览器打开
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https:') || url.startsWith('http:')) {
-      shell.openExternal(url)
-    }
-    return { action: 'deny' }
-  })
-
-  // 处理页面加载错误
-  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
-    logToFile(`Page failed to load: ${errorCode} - ${errorDescription}`)
-  })
-
   createApplicationMenu()
 }
 
-app.whenReady().then(() => {
-  logToFile('App is ready')
-  // 启动时建立 data/app.db 与 settings 表（规格：SQLite 数据库文件归属）
-  try {
-    getDb()
-  } catch (error: any) {
-    logToFile(`Database init failed: ${error.message}`)
-  }
-  // 自动更新（三级更新源，启动延迟自动检查）
-  initUpdater((msg) => logToFile(`[updater] ${msg}`))
-  createWindow()
-}).catch(error => {
-  logToFile(`Failed to create window: ${error.message}`)
-})
+app
+  .whenReady()
+  .then(() => {
+    logInfo('App is ready')
+    // 工作目录不可写时后续日志与建库都会静默失败，先确认再启动（方案 B1/R9）
+    try {
+      resolveWorkspace()
+    } catch (error) {
+      logErrorWithStack('ERROR', error)
+      dialog.showErrorBox('无法准备工作目录', (error as Error).message)
+      app.quit()
+      return
+    }
+    // 启动时建立 data/app.db 与 settings 表（规格：SQLite 数据库文件归属）
+    try {
+      getDb()
+    } catch (error) {
+      logError(`Database init failed: ${(error as Error).message}`)
+    }
+    // 自动更新（更新源由环境变量或打包内置 app-update.yml 决定，见方案 B2/S3）
+    initUpdater((msg) => logInfo(`[updater] ${msg}`))
+    createWindow()
+  })
+  .catch((error) => {
+    logErrorWithStack('ERROR', error)
+  })
 
 app.on('window-all-closed', () => {
   win = null
   if (process.platform !== 'darwin') app.quit()
+})
+
+// 退出前关闭 SQLite，避免 WAL 模式残留 -wal/-shm（方案 B1/R3）
+app.on('before-quit', () => {
+  closeDb()
 })
 
 app.on('second-instance', () => {
@@ -145,9 +201,7 @@ function createApplicationMenu() {
           click: async () => {
             const result = await dialog.showOpenDialog(win!, {
               properties: ['openFile'],
-              filters: [
-                { name: 'All Files', extensions: ['*'] }
-              ]
+              filters: [{ name: 'All Files', extensions: ['*'] }]
             })
             if (!result.canceled) {
               win?.webContents.send('file-opened', result.filePaths[0])

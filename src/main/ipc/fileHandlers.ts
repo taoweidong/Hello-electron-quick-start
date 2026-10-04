@@ -4,6 +4,8 @@ import { readFile, writeFile, access, constants } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import JSZip from 'jszip'
 import { createExtractorFromData } from 'node-unrar-js'
+import { safeJoin, isRootPlaceholder } from '../security/zipSlip'
+import { logWarn } from '../logger'
 
 // 文件操作处理器
 ipcMain.handle('file:read', async (event, filePath: string) => {
@@ -45,7 +47,16 @@ ipcMain.handle('zip:extract', async (event, zipPath: string, extractPath: string
     }
 
     loadedZip.forEach((relativePath: string, zipEntry: any) => {
-      const fullPath = join(extractPath, relativePath)
+      if (zipEntry.dir && isRootPlaceholder(relativePath)) return
+
+      // 条目名来自不可信归档：越出解压目录即整包失败（安全/方案 B1）
+      let fullPath: string
+      try {
+        fullPath = safeJoin(extractPath, relativePath)
+      } catch (error) {
+        logWarn(`zip 条目被拒绝: ${(error as Error).message}`)
+        throw error
+      }
 
       if (zipEntry.dir) {
         // 创建目录
@@ -108,7 +119,16 @@ ipcMain.handle('rar:extract', async (event, rarPath: string, extractPath: string
     const extracted = extractor.extract({})
     for (const entry of extracted.files) {
       const header = entry.fileHeader
-      const fullPath = join(extractPath, header.name)
+      if (header.flags && header.flags.directory && isRootPlaceholder(header.name)) continue
+
+      // header.name 可能含反斜杠与相对段，与 ZIP 共用同一套校验
+      let fullPath: string
+      try {
+        fullPath = safeJoin(extractPath, header.name)
+      } catch (error) {
+        logWarn(`rar 条目被拒绝: ${(error as Error).message}`)
+        throw error
+      }
 
       if (header.flags && header.flags.directory) {
         // 创建目录

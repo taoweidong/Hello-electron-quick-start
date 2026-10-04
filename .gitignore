@@ -114,6 +114,7 @@ dist/
 
 # Electron build files
 dist/
+dist-test/
 release/
 dist-release/
 

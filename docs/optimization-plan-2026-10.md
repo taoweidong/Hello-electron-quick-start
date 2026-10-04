@@ -15,7 +15,7 @@
 
 ## 1. 批次划分（顺序即依赖顺序）
 
-### B1 止血 —— 零契约变更，可独立合入
+### B1 止血 —— 零契约变更，可独立合入（✅ 已实施 2026-10-04）
 
 对应发现：S1、S4、S5、R2、R3、R8、R9
 规模：约 6 文件 / 120 行
@@ -32,6 +32,12 @@
 
 验收：① 构造含 `../evil.txt` 条目的 zip，拖入应用 → 必须返回解压失败且目标目录外无新文件；② `will-navigate` 用例：dev 下手动 `window.location.href='https://example.com'` → 被拦截且日志留痕；③ 人为在主进程抛一个异步异常 → 进程存活且 `app.log` 有 stack；④ 关闭应用后 `data/` 目录不应残留 `app.db-wal`/`-shm`。
 回滚：单 commit revert，无数据格式变更，无用户可见行为退化（除 R8/回落失败新增错误弹窗）。
+
+实施记录（2026-10-04）：四条验收均通过——手写 STORED zip（条目名保留字面 `../b1-evil.txt`）经 `zip:extract` 后解压目录外无新文件；导航/外链拒绝与解压拒绝都在 `app.log` 留 `[WARN]` 痕；优雅退出后 `data/` 只剩 `app.db`（`-wal`/`-shm` 被 checkpoint 删除）；`type-check` / `eslint .`（无 `--fix`）/ `build` / `electron:test` 全绿，并新增 `npm test`（8 条 zipSlip 用例）。三点实施期发现改变了原方案细节：
+
+- **穿越面比预估窄**：jszip 在 `loadAsync` 阶段就把 `../x` 规范化成 `x`，ZIP 侧的 `../` 走不到拼接；真正传原始名的是 RAR 的 `header.name`（反斜杠、不做规范化）。`safeJoin` 仍然必要——它同时拦 `/abs`、`C:\`、UNC、`\\?\`、控制字符与 Windows 非法字符，这些 jszip 都不管。
+- **严格拒绝会误伤合法归档**：Windows 自带 `tar.exe -a -cf x.zip .` 会产生名为 `/` 的根占位条目，一律抛错会让这类包整解压失败。故新增 `isRootPlaceholder()`：目录型占位条目跳过，文件型仍按异常拒绝。
+- **测试链路**：根包 `type: commonjs` 下 Node 24 的原生 type stripping 不能跑 ESM 语法的 `.ts`，`npm run test` 先 `tsc -p tsconfig.test.json` 产出 `dist-test/` 再 `node --test`；`type-check` 追加同一配置的 `--noEmit` 检查，`dist-test/` 与 `eslint` 均已 ignore。
 
 ### B2 断链 —— 路径根 + 更新源校验（本轮 P0 收口）
 

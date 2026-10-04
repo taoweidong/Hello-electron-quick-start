@@ -32,17 +32,20 @@ export function resolveWorkspace(): WorkspaceInfo {
   if (cached) return cached
 
   const preferred = process.env.MYWINAPP_WORKDIR || 'D:\\MyWinApp'
-  let info: WorkspaceInfo
   if (trySetup(preferred)) {
-    info = { path: preferred, fallback: false }
-  } else {
-    const fallbackRoot = app.getPath('userData')
-    trySetup(fallbackRoot)
-    info = { path: fallbackRoot, fallback: true }
+    cached = { path: preferred, fallback: false }
+    return cached
   }
 
-  cached = info
-  return info
+  // 首选目录不可用时整体回落到 userData；回落同样不可写属于无法继续的状态，
+  // 静默报告成功会让后续日志/建库全部落在失败的目录上
+  const fallbackRoot = app.getPath('userData')
+  if (!trySetup(fallbackRoot)) {
+    throw new Error(`工作目录不可写：首选 ${preferred}，回落 ${fallbackRoot} 同样不可用`)
+  }
+
+  cached = { path: fallbackRoot, fallback: true }
+  return cached
 }
 
 export function getLogsDir(): string {

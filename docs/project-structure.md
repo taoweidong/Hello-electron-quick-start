@@ -11,14 +11,17 @@
 │   │   ├── main/           #   ← src/main 的产物（package.json main 指向 main/index.js）
 │   │   └── shared/         #   ← src/shared 的产物（供主进程运行时引用）
 │   └── view/               # Vite 构建输出（Vite root 为 src/view）
+├── dist-test/              # tests 的 tsc 预编译输出（gitignore，npm run test 生成）
 ├── docs/                   # 项目文档
 ├── openspec/               # OpenSpec 规划与规格（specs/ 主规格库 + changes/ 与 archive/）
 ├── release/                # electron-builder 打包输出（gitignore）
 ├── src/
 │   ├── main/               # Electron 主进程（TypeScript）
-│   │   ├── index.ts        #   入口：窗口、菜单、日志（工作目录 logs/app.log）、SQLite 初始化
+│   │   ├── index.ts        #   入口：窗口、菜单、SQLite 初始化、外链/导航白名单、进程级异常兜底
+│   │   ├── logger.ts       #   工作目录 logs/app.log 写入（超 5MB 轮转 app.log.1）
+│   │   ├── security/       #   zipSlip.ts：压缩包条目名的路径校验（safeJoin / isRootPlaceholder）
 │   │   ├── preload.ts      #   contextBridge 暴露 window.electronAPI
-│   │   ├── workspace/      #   工作目录解析（默认 D:\MyWinApp，env 覆盖，回落 userData）
+│   │   ├── workspace/      #   工作目录解析（默认 D:\MyWinApp，env 覆盖，回落 userData，不可写则抛错）
 │   │   ├── db/             #   node:sqlite 数据库单例与 settings 键值表（data/app.db，WAL）
 │   │   ├── updater/        #   electron-updater 自动更新（三级更新源、状态机、事件推送）
 │   │   └── ipc/            #   ipcMain.handle 处理器（appHandlers / fileHandlers /
@@ -28,7 +31,7 @@
 │   │   └── src/
 │   │       ├── components/ #   公共组件与文件渲染器（renderers/）
 │   │       ├── services/   #   文件渲染/解压服务（Zip / Rar / Text / Image）
-│   │       ├── views/      #   页面（Files / Settings 已注册路由；Home / About 文件保留）
+│   │       ├── views/      #   页面（Files / Settings / About 已注册路由；Home 文件保留）
 │   │       ├── store/      #   Pinia
 │   │       ├── router/     #   Vue Router
 │   │       ├── types/      #   渲染进程类型声明（含 Window.electronAPI 全局增强）
@@ -37,6 +40,7 @@
 │       ├── constants/      #   常量（仅 index.ts，单一来源）
 │       └── types/          #   共享类型（electron.d.ts，含 ElectronAPI 完整定义）
 ├── test-main.js            # 冒烟测试（npm run electron:test，自动退出）
+├── tests/                  # node --test 单元测试（npm run test，纯函数用例：zipSlip 等）
 ├── scripts/
 │   ├── pack-single.js      # 一键打包脚本（npm run build:single，含产物核验与回显）
 │   └── release.js          # 发布流水线（npm run release：对账核验 + 归集 + PUT 上传 + 校验）
@@ -47,6 +51,7 @@
 ├── vite.config.ts          # Vite 配置（根目录，生效配置）
 ├── tsconfig.json           # TS 基础配置（路径别名）
 ├── tsconfig.node.json      # 主进程 TS 配置（rootDir=src，输出 dist/main）
+├── tsconfig.test.json      # 测试 TS 配置（tests → dist-test，供 node --test 运行）
 └── tsconfig.web.json       # 渲染进程 TS 配置
 ```
 
