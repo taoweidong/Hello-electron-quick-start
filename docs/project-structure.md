@@ -46,13 +46,15 @@
 ├── scripts/
 │   ├── clean.js            # 清理产物（npm run clean，Node 内置 rmSync，不引 rimraf）
 │   ├── pack-single.js      # 一键打包脚本（npm run build:single，含产物核验与回显）
-│   └── release.js          # 发布流水线（npm run release：对账核验 + 归集 + PUT 上传 + 校验）
+│   ├── release.js          # 发布流水线（npm run release：对账核验 + 归集 + PUT 上传 + 校验）
+│   └── lib/
+│       └── release-utils.js # 发布/打包共用纯函数（parseLatestYml/sha512/PE 版本/版本比较，node --test 可直测）
 ├── release.config.json     # 发布配置（upload.url；凭据经 RELEASE_UPLOAD_AUTH 环境变量）
 ├── 一键打包.bat             # Windows 双击入口（调用 build:single，UTF-8 + CRLF）
-├── eslint.config.mjs       # ESLint 10 flat config（根目录，生效配置）
+├── eslint.config.mjs       # ESLint 10 flat config（类型感知：按目录映射 node/web/test tsconfig）
 ├── electron-builder.json   # 打包配置（根目录，生效配置）
 ├── vite.config.ts          # Vite 配置（根目录，生效配置）
-├── tsconfig.json           # TS 基础配置（路径别名）
+├── tsconfig.json           # TS 聚合入口（files:[] + references 到下面三个，仅导航/工具用）
 ├── tsconfig.node.json      # 主进程 TS 配置（rootDir=src，输出 dist/main）
 ├── tsconfig.test.json      # 测试 TS 配置（tests → dist-test，供 node --test 运行）
 └── tsconfig.web.json       # 渲染进程 TS 配置

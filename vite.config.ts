@@ -10,8 +10,20 @@ export default defineConfig({
   build: {
     outDir: resolve(__dirname, './dist/view'),
     emptyOutDir: true,
+    // Electron 44 内核远高于此下限，取保守值避免过度转译（方案 B4/E6）
+    target: 'chrome126',
+    // 产 sourcemap 供崩溃定位，但 hidden 不注入 //# sourceMappingURL，浏览器/打包不携带
+    sourcemap: 'hidden',
     rollupOptions: {
-      external: []
+      output: {
+        // element-plus 体积大且稳定，单独 vendor chunk 利于缓存与首屏（方案 B4/E6）。
+        // 注意：rolldown 只支持函数形态的 manualChunks（对象形态直接报 TypeError）
+        manualChunks(id: string) {
+          if (id.includes('node_modules') && (id.includes('element-plus') || id.includes('@element-plus'))) {
+            return 'vendor-element-plus'
+          }
+        }
+      }
     }
   },
   server: {

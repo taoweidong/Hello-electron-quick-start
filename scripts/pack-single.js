@@ -3,9 +3,10 @@
 // 流程：前置检查 → 逐步构建链 → 产物核验（存在/体积/版本一致性/sha512）→ 结果回显
 // 详见 openspec/changes/add-one-click-pack（design D1-D6）
 const { spawnSync } = require('node:child_process')
-const { createHash } = require('node:crypto')
 const { existsSync, readFileSync, statSync } = require('node:fs')
 const { join, resolve } = require('node:path')
+// sha512 / PE 版本读取 / artifactName 模板推导与 release.js 共用同一实现（方案 B4/E4）
+const { renderArtifactName, sha512File, getProductVersion } = require('./lib/release-utils')
 
 const ROOT = resolve(__dirname, '..')
 const verifyOnly = process.argv.includes('--verify-only')
@@ -32,11 +33,10 @@ function expectedExePath() {
   const template =
     (builderCfg.portable && builderCfg.portable.artifactName) ||
     '${productName}-${version}-portable.${ext}'
-  const name = template
-    .replace('${productName}', builderCfg.productName || pkg.name)
-    .replace('${version}', version)
-    .replace('${ext}', 'exe')
-  return join(outDir, name)
+  return join(
+    outDir,
+    renderArtifactName(template, { productName: builderCfg.productName || pkg.name, version, arch: 'x64', ext: 'exe' })
+  )
 }
 
 function step(name, cmd, args) {
@@ -54,21 +54,6 @@ function step(name, cmd, args) {
   console.log(`${c.green(`<== [${name}] 完成`)}`)
 }
 
-function sha512sum(p) {
-  return createHash('sha512').update(readFileSync(p)).digest('hex')
-}
-
-function getProductVersion(p) {
-  if (process.platform !== 'win32') return null
-  const res = spawnSync(
-    'powershell',
-    ['-NoProfile', '-Command', `(Get-Item -LiteralPath "${p}").VersionInfo.ProductVersion`],
-    { encoding: 'utf8' }
-  )
-  if (res.status !== 0) return null
-  return (res.stdout || '').trim()
-}
-
 function verify() {
   const exePath = expectedExePath()
   if (!existsSync(exePath)) fail(`产物不存在: ${exePath}`)
@@ -81,7 +66,7 @@ function verify() {
     fail(`exe 的 ProductVersion（${productVersion}）与 package.json 版本（${version}）不一致，疑似旧产物`)
   }
 
-  const hash = sha512sum(exePath)
+  const hash = sha512File(exePath, 'hex')
   console.log(`\n${c.green('================ 产物核验通过 ================')}`)
   console.log(`路径    : ${exePath}`)
   console.log(`体积    : ${(size / 1024 / 1024).toFixed(1)} MB`)
@@ -103,9 +88,9 @@ if (!existsSync(join(ROOT, 'node_modules'))) {
 }
 
 const started = Date.now()
-step('类型检查', 'npm', ['run', 'type-check'])
-step('主进程编译', 'npm', ['run', 'compile:main'])
-step('渲染进程构建', 'npx', ['vite', 'build'])
+// 构建链单一入口 build:core（类型检查 + 主进程编译 + vite 构建），与 build/build:prod 共用，
+// 不在脚本里重写步骤（方案 B4/E2）
+step('构建链（build:core）', 'npm', ['run', 'build:core'])
 step('打包 portable', 'npx', ['electron-builder', 'build', '--publish=never', '--win=portable'])
 
 verify()

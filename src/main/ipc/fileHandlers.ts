@@ -11,6 +11,27 @@ import type { ExtractedFileInfo, FileInfo } from '../../shared/types/electron'
 
 // 文件操作处理器（B3 起统一走 ipcSafe：抛错即 {ok:false,error}，返回值即 {ok:true,data}）
 
+// 归档体积阈值（方案 B4/R7 非 Worker 部分）：zip 走 JSZip 全量入内存、rar 走 WASM
+// 数据解压，超大包是 OOM 风险而不是慢——直接拒绝并给出明确错误，不做流式解压
+const MAX_ARCHIVE_BYTES = 500 * 1024 * 1024
+
+class ArchiveTooLargeError extends Error {
+  constructor(msg: string) {
+    super(msg)
+    this.name = 'ArchiveTooLargeError'
+  }
+}
+
+async function assertArchiveWithinLimit(archivePath: string): Promise<void> {
+  const stats = await fsp.stat(archivePath)
+  if (stats.size > MAX_ARCHIVE_BYTES) {
+    logWarn(`拒绝解压超大归档: ${archivePath}（${(stats.size / 1024 / 1024).toFixed(1)} MB）`)
+    throw new ArchiveTooLargeError(
+      `归档体积 ${(stats.size / 1024 / 1024).toFixed(1)} MB 超过上限 ${MAX_ARCHIVE_BYTES / 1024 / 1024} MB，已拒绝解压（防止内存耗尽），请拆分后重试`
+    )
+  }
+}
+
 ipcSafe('file:read', async (event, filePath: string) => {
   assertPathAllowed(filePath, 'read')
   return readFile(filePath, 'utf-8')
@@ -26,8 +47,9 @@ ipcSafe('zip:extract', async (event, zipPath: string, extractPath: string) => {
   // 解压目标必须落在授权根内；压缩包来源不做读限制（用户亲自拖入才可拿到路径）
   assertPathAllowed(extractPath, 'write')
 
-  // 检查 ZIP 文件是否存在
+  // 检查 ZIP 文件是否存在，并做体积预检（>500MB 拒绝，R7）
   await access(zipPath, constants.F_OK)
+  await assertArchiveWithinLimit(zipPath)
 
   // 读取 ZIP 文件
   const zipBuffer = await readFile(zipPath)
@@ -98,8 +120,9 @@ ipcSafe('rar:extract', async (event, rarPath: string, extractPath: string) => {
   // 与 ZIP 一致：目标目录先过授权，条目名再由 safeJoin 逐段校验
   assertPathAllowed(extractPath, 'write')
 
-  // 检查 RAR 文件是否存在
+  // 检查 RAR 文件是否存在，并做体积预检（>500MB 拒绝，R7）
   await access(rarPath, constants.F_OK)
+  await assertArchiveWithinLimit(rarPath)
 
   // 创建解压目录
   if (!existsSync(extractPath)) {
@@ -107,7 +130,7 @@ ipcSafe('rar:extract', async (event, rarPath: string, extractPath: string) => {
   }
 
   const raw = await fsp.readFile(rarPath)
-  const data = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength) as ArrayBuffer
+  const data = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength)
   const extractor = await createExtractorFromData({ data })
 
   const extractedFiles: ExtractedFileInfo[] = []

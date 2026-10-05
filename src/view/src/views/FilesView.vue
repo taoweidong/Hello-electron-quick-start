@@ -6,8 +6,12 @@
         <div class="panel-header">
           <h2>文件结构</h2>
         </div>
-        <div class="drop-zone" @drop="handleDrop" @dragover="handleDragOver">
-          <el-text type="info" v-if="!fileTree.length">
+        <div class="drop-zone" :class="{ 'is-extracting': extracting }" @drop="handleDrop" @dragover="handleDragOver">
+          <div v-if="extracting" class="extracting-hint">
+            <el-icon class="is-loading" :size="48"><Loading /></el-icon>
+            <div>正在解压，请稍候…（解压期间忽略新的拖放）</div>
+          </div>
+          <el-text type="info" v-else-if="!fileTree.length">
             <el-icon><Upload /></el-icon>
             <div>拖拽 ZIP 或 RAR 文件到此处上传</div>
           </el-text>
@@ -88,7 +92,8 @@ import {
   FolderOpened, 
   Document, 
   Picture, 
-  Folder 
+  Folder,
+  Loading
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { formatFileSize, formatTime } from '@/utils'
@@ -109,6 +114,8 @@ const treeProps = {
 const selectedFile = ref<any>(null)
 const fileContent = ref<string>('')
 const imageSrc = ref<string>('')
+// 解压进行中标记（方案 B4/R7 非 Worker 部分：loading 态 + 拒绝新拖放）
+const extracting = ref(false)
 
 // 获取文件渲染器标题
 const getFileRendererTitle = () => {
@@ -198,6 +205,12 @@ const handleDragOver = (event: DragEvent) => {
 // 处理文件拖放
 const handleDrop = async (event: DragEvent) => {
   event.preventDefault()
+
+  // 解压进行中拒绝新的拖放（方案 B4/R7）
+  if (extracting.value) {
+    ElMessage.info('正在解压中，请等待当前操作完成')
+    return
+  }
   
   if (!event.dataTransfer) return
   
@@ -234,15 +247,24 @@ const handleDrop = async (event: DragEvent) => {
     const extractPath = `${userDataResult.data}/extracted/${Date.now()}`
 
     // 调用解压器解压文件（Electron 32+ 移除 File.path，经 webUtils 获取真实路径）
-    const filePath = window.electronAPI.getPathForFile(file)
-    const result = await extractor.extract(filePath, extractPath)
-    
-    if (result.ok) {
-      // 构建文件树结构
-      buildFileTree(extractPath, result.data)
-      ElMessage.success('文件解压成功')
-    } else {
-      ElMessage.error(`解压失败: ${result.error.message}`)
+    extracting.value = true
+    try {
+      const filePath = window.electronAPI.getPathForFile(file)
+      const result = await extractor.extract(filePath, extractPath)
+
+      if (result.ok) {
+        if (result.data.length === 0) {
+          // 空归档不再静默：明确提示，避免"成功但树是空的"的困惑（方案 B4/R7）
+          ElMessage.warning('解压完成，但压缩包内没有可提取的条目')
+        } else {
+          buildFileTree(extractPath, result.data)
+          ElMessage.success('文件解压成功')
+        }
+      } else {
+        ElMessage.error(`解压失败: ${result.error.message}`)
+      }
+    } finally {
+      extracting.value = false
     }
   } catch (error: any) {
     ElMessage.error(`操作失败: ${error.message}`)
@@ -371,6 +393,30 @@ onMounted(() => {
 .drop-zone:hover {
   border-color: #409eff;
   background-color: #f0f9ff;
+}
+
+/* 解压进行中：灰化 + 禁止指针，配合 handleDrop 的拒绝逻辑（方案 B4/R7） */
+.drop-zone.is-extracting {
+  cursor: progress;
+  background-color: #f5f7fa;
+  border-color: #e4e7ed;
+}
+
+.drop-zone.is-extracting:hover {
+  border-color: #e4e7ed;
+  background-color: #f5f7fa;
+}
+
+.extracting-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 200px;
+  gap: 12px;
+  color: #909399;
+  font-size: 15px;
 }
 
 .drop-zone .el-text {

@@ -10,18 +10,19 @@ export class ImageFileRenderer extends FileRenderer {
    * @param filePath 文件路径
    * @returns 渲染结果（图片文件只需返回路径）
    */
-  async render(filePath: string): Promise<{success: boolean, content?: string, error?: string}> {
+  render(filePath: string): Promise<{success: boolean, content?: string, error?: string}> {
+    // 实现为纯同步（无 await，B4 require-await）：去 async，显式返回 Promise
     try {
       // 对于图片文件，我们只需要返回文件路径
-      return {
+      return Promise.resolve({
         success: true,
         content: `file://${filePath}`
-      }
-    } catch (error: any) {
-      return {
+      })
+    } catch (error) {
+      return Promise.resolve({
         success: false,
-        error: error.message || '处理图片文件时发生错误'
-      }
+        error: error instanceof Error ? error.message : '处理图片文件时发生错误'
+      })
     }
   }
   

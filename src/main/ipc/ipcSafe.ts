@@ -16,7 +16,7 @@ export type IpcHandler<T> = (event: IpcMainInvokeEvent, ...args: any[]) => T | P
 function errorCode(error: unknown): string {
   if (error instanceof Error && error.name) return error.name
   if (typeof error === 'object' && error !== null && 'code' in error) {
-    return String((error as { code: unknown }).code)
+    return String(error.code)
   }
   return 'Error'
 }
@@ -24,7 +24,7 @@ function errorCode(error: unknown): string {
 export function ipcSafe<T>(channel: string, fn: IpcHandler<T>): void {
   ipcMain.handle(channel, async (event, ...args): Promise<IpcResult<Awaited<T>>> => {
     try {
-      return { ok: true, data: (await fn(event, ...args)) as Awaited<T> }
+      return { ok: true, data: await fn(event, ...args) }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       logWarn(`IPC ${channel} 失败: ${message}`)

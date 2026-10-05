@@ -1,12 +1,12 @@
 {
-  "compilerOptions": {
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "paths": {
-      "@/*": ["./src/view/src/*"],
-      "@shared/*": ["./src/shared/*"]
-    }
-  }
+  // 聚合入口（方案 B4/E7）：本仓库没有单一"根"编译配置——
+  // 主进程 = tsconfig.node.json，渲染进程 = tsconfig.web.json，单测 = tsconfig.test.json。
+  // 类型检查/构建命令都显式 -p 指定其一；这里仅向编辑器与工具声明项目组成。
+  // （引用项目未加 composite：三个子项目各有 noEmit/构建约束，聚合仅做导航，不用于 tsc -b）
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.node.json" },
+    { "path": "./tsconfig.web.json" },
+    { "path": "./tsconfig.test.json" }
+  ]
 }

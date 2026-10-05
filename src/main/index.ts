@@ -81,7 +81,7 @@ async function createWindow() {
   // 外部链接用系统浏览器打开
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (isAllowedExternalUrl(url)) {
-      shell.openExternal(url)
+      shell.openExternal(url).catch((error) => logError(`打开外部链接失败: ${url} ${(error as Error).message}`))
     } else {
       logWarn(`拒绝打开外部链接: ${url}`)
     }
@@ -130,7 +130,7 @@ async function createWindow() {
 
 app
   .whenReady()
-  .then(() => {
+  .then(async () => {
     logInfo('App is ready')
     // 工作目录不可写时后续日志与建库都会静默失败，先确认再启动（方案 B1/R9）
     try {
@@ -151,7 +151,7 @@ app
     grantRootDir(join(app.getPath('userData'), 'extracted'))
     // 自动更新（更新源由环境变量或打包内置 app-update.yml 决定，见方案 B2/S3）
     initUpdater((msg) => logInfo(`[updater] ${msg}`))
-    createWindow()
+    await createWindow()
   })
   .catch((error) => {
     logErrorWithStack('ERROR', error)
@@ -179,7 +179,7 @@ app.on('activate', () => {
   if (allWindows.length) {
     allWindows[0].focus()
   } else {
-    createWindow()
+    createWindow().catch((error) => logErrorWithStack('ERROR', error))
   }
 })
 

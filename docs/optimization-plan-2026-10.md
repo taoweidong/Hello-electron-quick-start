@@ -39,7 +39,7 @@
 - **严格拒绝会误伤合法归档**：Windows 自带 `tar.exe -a -cf x.zip .` 会产生名为 `/` 的根占位条目，一律抛错会让这类包整解压失败。故新增 `isRootPlaceholder()`：目录型占位条目跳过，文件型仍按异常拒绝。
 - **测试链路**：根包 `type: commonjs` 下 Node 24 的原生 type stripping 不能跑 ESM 语法的 `.ts`，`npm run test` 先 `tsc -p tsconfig.test.json` 产出 `dist-test/` 再 `node --test`；`type-check` 追加同一配置的 `--noEmit` 检查，`dist-test/` 与 `eslint` 均已 ignore。
 
-### B2 断链 —— 路径根 + 更新源校验（本轮 P0 收口）（✅ 已实施 2026-10-05）（✅ 已实施 2026-10-05）
+### B2 断链 —— 路径根 + 更新源校验（本轮 P0 收口）（✅ 已实施 2026-10-05）
 
 对应发现：S2、S3、S8、R1（+ S4 的白名单集中化）
 规模：约 8 文件 / 200 行
@@ -106,7 +106,7 @@
 - **死岛渲染器（`services/*Renderer*.ts`）不并入 IPC 形状**：其 `render()` 是渲染层内部抽象（P2-1 清理对象），只在调用 `readFile` 的边界处把 `IpcResult` 转回 `{success,content}`，避免为一个待删孤岛扩大本轮 diff。`FileExtractor` 抽象则直接改用 `IpcResult<ExtractedFileInfo[]>`（它是活的）。
 - **R6 同批修掉**：新增 `src/view/src/utils/path.ts`（`baseName`/`parentDir`/`extname`，`\` 与 `/` 同等处理），`FilesView` 的父目录查找与扩展名判定、`FileRenderer.vue` 的类型判定改用它——原先 `lastIndexOf('/')` 在 Windows 解压路径上恒不命中、`substring(lastIndexOf('.'))` 在无点号目录名上会返回整段。
 
-### B4 工程化必修
+### B4 工程化必修（✅ 已实施 2026-10-05）
 
 对应发现：E2、E3、E4、E5（部分）、E6、E7（部分）、R7（非 Worker 部分）、S7/S8（低风险部分）
 规模：约 7 文件 / 250 行
@@ -124,6 +124,15 @@
 
 验收：① `npm run lint` 在新规则下退出码 0（若初期错误过多，用 `warn` 过渡并记录待办数量，不允许加 `eslint-disable`）；② 跑一次 `npm run release:collect`（不上传，安全）确认 latest.yml 解析与归集仍通过；③ 断网或指向不可达 host 跑 `npm run release -- --no-build --no-upload` 类只读路径，确认超时参数生效且不会永久挂起；④ `grep -c "type-check && npm run compile:main" package.json` 结果为 0（复制已消除）；⑤ `npm run build` 产物体积与改动前对比记录进 commit（防手工回归）；⑥ `npm run build:prod` 与 `npm run build:portable` 均成功，且 `release/` 下不再出现非 win 目标相关产物（builder 配置改动的回归证明）。
 回滚：配置类改动逐条 revert 即可；`release.js` 的顺序/校验改动属发布链路，合入后**第一次真实上传前**须人工核对远端目录状态。
+
+实施记录（2026-10-05）：验收全绿——① `eslint .`（无 `--fix`）0 error / 27 warning（21 个 `no-explicit-any` + 6 个 `no-unsafe-*`，集中在 FilesView 等旧渲染代码与 ipcSafe 参数收口点，P2-4 清零后升 error；全批未加一条 `eslint-disable`）；② `release:collect` 通过（真实 latest.yml 只有一个 files 条目——blockmap 经 `blockMapSize` 引用不在数组内，新解析器与真实形状吻合且缺段即抛错）；③ 不可达 host 预检 2.2s 内以 HTTP 000 快速失败，不挂起；④ 验收 grep 写 0 不可达（`build:core` 自身定义必含该串），实际标准改为"该串在 package.json 仅出现于 build:core 一处"，build/build:prod/build:portable/pack-single 均已复用；⑤⑥ `build`、`build:prod`、`build:portable`、`electron:test`、`test`（23 条）、`type-check` 全过，产物 portable 167.6MB / NSIS 117.5MB / blockmap 120KB。七点实施细节偏离/补充了原方案：
+- **ESLint 映射不用 `projectService`**：根 tsconfig 改为聚合入口（`files: []` + references）后不再兜底所有 .ts，配置里按目录显式 `project` 映射（src/main+src/shared→node，src/view→web，tests→test）。过程中实测出 ESLint 10 的坑：`files` 混合正负模式（`['**/*.ts', '!vite.config.ts']`）会匹配**除取反外的全部文件**，导致类型规则泄漏到 .js/.mjs/.vue——`disableTypeChecked` 必须放数组最后且模式全正向。
+- `no-floating-promises` 在 `tests/**` 目录级 off（配置层豁免，非文件内 disable）：node:test 顶层 `test()` 返回 Promise 是 runner 调度语义；`src/main/index.ts` 的 3 处真实 floating promise 已改为 `await`/`.catch` 正经处理。
+- rolldown（Vite 8）不支持 `manualChunks` 对象形态（直接抛 `TypeError: manualChunks is not a function`），改用函数形态按模块 id 归组，产出 `vendor-element-plus` chunk。
+- `parseLatestYml` / PE `ProductVersion` / sha512 / `compareVersion` / artifactName 模板渲染提取到 `scripts/lib/release-utils.js`（release.js 与 pack-single.js 共用，E4 重复消除，B5 可 node --test 直测）。
+- **`extraMetadata.version` 未做**：package.json 是唯一版本来源，electron-builder 自动从它取 version；再在元数据写死一份等于制造漂移面（与 appId/copyright 的 D4 决定同向，放 P2-2）。
+- electron-builder `files` 新增 `!dist/**/*.map`：hidden sourcemap 留在 `dist/view` 供排障但不进 asar，避免与产物体积目标冲突。
+- R7 空归档提示落在渲染层（`result.data.length === 0` → warning），主进程 >500MB 阈值以 `ArchiveTooLargeError` 拒绝并 WARN 落日志；超大包的正式反向用例归 B5 纯函数批补。
 
 ### B5 最小验证面（建议，超出你勾选范围 → 待批）
 
