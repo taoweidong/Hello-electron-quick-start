@@ -89,7 +89,8 @@ export function readBuiltinFeedUrl(resourcesPath: string): string {
   if (!existsSync(file)) return ''
   try {
     const match = /^url:\s*(\S.*)$/m.exec(readFileSync(file, 'utf-8'))
-    return match ? match[1].trim().replace(/^["']|["']$/g, '') : ''
+    const raw = match?.[1]
+    return raw ? raw.trim().replace(/^["']|["']$/g, '') : ''
   } catch {
     return ''
   }

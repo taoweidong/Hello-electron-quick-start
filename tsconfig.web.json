@@ -9,6 +9,9 @@
     "src/view/src/**/__tests__/*"
   ],
   "compilerOptions": {
+    // 方案 P2-4：与 tsconfig.node/test 同步开启严格索引/可选属性检查
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
     "paths": {
       "@/*": ["./src/view/src/*"],
       "@shared/*": ["./src/shared/*"]

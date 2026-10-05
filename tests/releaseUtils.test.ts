@@ -36,8 +36,8 @@ test('parseLatestYml：多文件条目 + 顶层杂项键不误收', () => {
     sha512: '9CeOnhkz0dNGNTxn',
     size: 117500911
   })
-  assert.equal(r.files[1].url, 'My-Win-App-1.0.1-x64.exe.blockmap')
-  assert.equal(r.files[1].size, 122898)
+  assert.equal(r.files[1]?.url, 'My-Win-App-1.0.1-x64.exe.blockmap')
+  assert.equal(r.files[1]?.size, 122898)
 })
 
 test('parseLatestYml：CRLF 与行尾空白容忍', () => {

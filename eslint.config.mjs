@@ -2,8 +2,7 @@
 // .ts 走 recommendedTypeChecked + projectService（借各 tsconfig 发现项目）；
 // .vue 与非 tsconfig 覆盖的脚本（scripts/、根级 .js/.mjs、vite.config.ts）关闭类型规则：
 // 后两类不在任何 tsconfig 内，SFC 的类型完整性由 vue-tsc（npm run type-check）保证。
-// no-explicit-any 由 off 降为 warn（B3 契约统一后已可收敛），unsafe 系列先 warn 过渡，
-// 待办数量记进 B4 commit，后续批（P2-4）清零后升 error。
+// no-explicit-any 与 unsafe 系列在 B3/B4 期间降为 warn 过渡，P2-4 待办清零后已升 error。
 import js from '@eslint/js'
 import globals from 'globals'
 import pluginVue from 'eslint-plugin-vue'
@@ -73,17 +72,18 @@ export default tseslint.config(
     }
   },
   {
-    // 仅对参与类型检查的 .ts（及 SFC 里的语法级 any）放宽为 warn；
-    // vite.config.ts 等由末尾 disableTypeChecked 再关。待办清零后升 error（P2-4）
+    // 方案 P2-4：待办已清零（P2-1 拆分消掉 FilesView 的 15 条，其余逐处收类型），
+    // 这批规则从 warn 升 error 守住成果——新代码里再出现 any 会直接红。
+    // vite.config.ts 等由末尾 disableTypeChecked 再关。
     files: ['**/*.ts', '**/*.vue'],
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unsafe-assignment': 'warn',
-      '@typescript-eslint/no-unsafe-member-access': 'warn',
-      '@typescript-eslint/no-unsafe-argument': 'warn',
-      '@typescript-eslint/no-unsafe-call': 'warn',
-      '@typescript-eslint/no-unsafe-return': 'warn',
-      '@typescript-eslint/restrict-template-expressions': 'warn'
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
+      '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-return': 'error',
+      '@typescript-eslint/restrict-template-expressions': 'error'
     }
   },
   {

@@ -10,8 +10,9 @@ import type { IpcResult } from '../../shared/types/electron'
 // code 优先取 Error.name（PathDeniedError / UnsafeFeedUrlError / TypeError…），
 // 其次 Node errno（ENOENT / EPERM…），渲染层可机器可读地区分失败类别。
 
-// IPC 参数天然异构（各通道自定），any 的收口点在主进程仅此一处，渲染层类型走 IpcResult
-export type IpcHandler<T> = (event: IpcMainInvokeEvent, ...args: any[]) => T | Promise<T>
+// IPC 参数天然异构，但不必用 any 收口（方案 P2-4）：把参数组做成泛型 A，
+// 各 handler 的具体签名由 TS 反推，只有 ipcMain 回调边界那一次断言是"已知形状"。
+type IpcHandler<A extends unknown[], T> = (event: IpcMainInvokeEvent, ...args: A) => T | Promise<T>
 
 function errorCode(error: unknown): string {
   if (error instanceof Error && error.name) return error.name
@@ -21,10 +22,10 @@ function errorCode(error: unknown): string {
   return 'Error'
 }
 
-export function ipcSafe<T>(channel: string, fn: IpcHandler<T>): void {
+export function ipcSafe<A extends unknown[], T>(channel: string, fn: IpcHandler<A, T>): void {
   ipcMain.handle(channel, async (event, ...args): Promise<IpcResult<Awaited<T>>> => {
     try {
-      return { ok: true, data: await fn(event, ...args) }
+      return { ok: true, data: await fn(event, ...(args as A)) }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       logWarn(`IPC ${channel} 失败: ${message}`)

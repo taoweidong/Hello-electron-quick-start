@@ -85,13 +85,19 @@
    electron-builder 自动附带生产依赖，安装包体积显著减小。
 6. **可单测纯函数约定**：`node --test` 无法加载 import 了 `electron` 的模块，故需要直测的纯函数
    独立成零 electron 接缝模块（`workspace/trySetup.ts`、`security/archiveLimit.ts`、
-   `main/utils/path.ts`、`scripts/lib/release-utils.js`），fs 类副作用经接口注入；测试文件一律放
+   `main/utils/path.ts`、`view/utils/fileType.ts`、`view/utils/fileTree.ts`、
+   `scripts/lib/release-utils.js`），fs 类副作用经接口注入；测试文件一律放
    `tests/`（经 tsconfig.test 编译到 `dist-test/`），不与源文件同层，避免进 `dist/` 产物。
    `baseName` 在主进程与渲染层是双实现，改语义两边同步，用 `tests/` 用例锁行为。
 7. **主题闭环**：渲染层颜色一律使用 Element Plus 的 `--el-*` 变量，禁止硬编码色值；深/浅色由
    `html.dark` class 翻转（`utils/theme.ts` 的 `applyTheme` 负责切换，`main.ts` 挂载前应用存储的
    `theme` 值，SettingsView 保存即时生效）。不要恢复 vite `additionalData` 注入 SCSS 全局片段
    （会把样式块复制进每个编译单元）。
+8. **类型治理（P2-4）**：`noUncheckedIndexedAccess` + `exactOptionalPropertyTypes` 在
+   `tsconfig.node/web/test` 三份**同时**开启；ESLint 的 `no-explicit-any`/`no-unsafe-*`/
+   `restrict-template-expressions` 七条为 **error**，基线 0 error 0 warning，不要新增
+   `eslint-disable`，也不要只给某一份 tsconfig 配严格标志。`catch` 统一
+   `catch (error)` + `instanceof Error` 收窄。
 
 ## 常用命令
 

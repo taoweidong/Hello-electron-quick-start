@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Menu, shell, dialog } from 'electron'
+import type { MenuItemConstructorOptions } from 'electron'
 import { join } from 'node:path'
 import { resolveWorkspace } from './workspace'
 import { getDb, closeDb } from './db'
@@ -176,8 +177,9 @@ app.on('second-instance', () => {
 
 app.on('activate', () => {
   const allWindows = BrowserWindow.getAllWindows()
-  if (allWindows.length) {
-    allWindows[0].focus()
+  const first = allWindows[0]
+  if (first) {
+    first.focus()
   } else {
     createWindow().catch((error) => logErrorWithStack('ERROR', error))
   }
@@ -187,7 +189,7 @@ app.on('activate', () => {
 import './ipc/index'
 
 function createApplicationMenu() {
-  const template = [
+  const template: MenuItemConstructorOptions[] = [
     {
       label: '文件',
       submenu: [
@@ -201,14 +203,17 @@ function createApplicationMenu() {
         {
           label: '打开',
           accelerator: 'CmdOrCtrl+O',
-          click: async () => {
-            const result = await dialog.showOpenDialog(win!, {
-              properties: ['openFile'],
-              filters: [{ name: 'All Files', extensions: ['*'] }]
-            })
-            if (!result.canceled) {
-              win?.webContents.send('file-opened', result.filePaths[0])
-            }
+          // click 的签名是 void 返回（MenuItemConstructorOptions），Promise 要就地收敛（方案 P2-4）
+          click: () => {
+            dialog
+              .showOpenDialog(win!, {
+                properties: ['openFile'],
+                filters: [{ name: 'All Files', extensions: ['*'] }]
+              })
+              .then((result) => {
+                if (!result.canceled) win?.webContents.send('file-opened', result.filePaths[0])
+              })
+              .catch((error: unknown) => logError(`菜单打开文件失败: ${(error as Error).message}`))
           }
         },
         { type: 'separator' },
@@ -251,15 +256,17 @@ function createApplicationMenu() {
       submenu: [
         {
           label: '关于',
-          click: async () => {
-            const { shell } = await import('electron')
-            await shell.openExternal('https://github.com/taoweidong/Hello-electron-quick-start')
+          click: () => {
+            // shell 顶部已导入，不再为一次调用动态 import（同上：void 收敛 Promise）
+            void shell
+              .openExternal('https://github.com/taoweidong/Hello-electron-quick-start')
+              .catch((error: unknown) => logError(`打开关于页面失败: ${(error as Error).message}`))
           }
         }
       ]
     }
   ]
 
-  const menu = Menu.buildFromTemplate(template as any)
+  const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
 }

@@ -11,6 +11,9 @@
     "target": "ES2022",
     "module": "node16",
     "moduleResolution": "node16",
+    // 方案 P2-4：三份 tsconfig 同步开启，避免"源码严格、测试宽松"的语义漂移
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
     "noEmit": false,
     "allowJs": true,
     "allowImportingTsExtensions": false,

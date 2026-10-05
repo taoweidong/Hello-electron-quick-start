@@ -10,6 +10,9 @@
     "target": "ES2023",
     "module": "node16",
     "moduleResolution": "node16",
+    // 方案 P2-4：索引访问与可选属性显式 undefined 都要过类型（三份 tsconfig 同步开启）
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
     "outDir": "./dist/main",
     "rootDir": "./src",
     "noEmit": false,

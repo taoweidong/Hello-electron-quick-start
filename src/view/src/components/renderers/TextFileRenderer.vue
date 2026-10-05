@@ -35,9 +35,10 @@ export default defineComponent({
         } else {
           fileContent.value = `读取文件失败: ${result.error.message}`
         }
-      } catch (error: any) {
-        fileContent.value = `读取文件失败: ${error.message}`
-        ElMessage.error(`读取文件失败: ${error.message}`)
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error)
+        fileContent.value = `读取文件失败: ${reason}`
+        ElMessage.error(`读取文件失败: ${reason}`)
       }
     }
 

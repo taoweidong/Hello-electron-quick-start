@@ -6,8 +6,8 @@ Electron 44 + Vue 3.5 + TypeScript 6 + Vite 8 + Element Plus 桌面应用，面�
 
 - `npm run electron:dev` — 开发模式：先 `tsc -p tsconfig.node.json` 编译主进程，再并行启动 Vite（端口 5180）和 Electron（cross-env 注入 `VITE_DEV_SERVER_URL`，渲染进程走 Vite 热更新）
 - `npm run dev` — 仅启动渲染进程 Vite 开发服务器（strictPort，端口固定 5180）
-- `npm run type-check` — 真实全量类型检查：`vue-tsc` 查渲染进程 + `tsc` 查主进程
-- `npm run lint` — ESLint 10 类型感知检查（flat config：`eslint.config.mjs`；src/main、src/shared → tsconfig.node，src/view → tsconfig.web，tests → tsconfig.test；`.vue`/脚本不启用类型规则）；自动修复用 `npm run lint:fix`
+- `npm run type-check` — 真实全量类型检查：`vue-tsc` 查渲染进程 + `tsc` 查主进程 + `tsc` 查测试。三份 tsconfig（node/web/test）**都开** `noUncheckedIndexedAccess` 与 `exactOptionalPropertyTypes`（方案 P2-4）：索引访问回来是 `T | undefined`，可选属性不许显式赋 `undefined`——不要只给某一份配上，语义漂移比不开更难查
+- `npm run lint` — ESLint 10 类型感知检查（flat config：`eslint.config.mjs`；src/main、src/shared → tsconfig.node，src/view → tsconfig.web，tests → tsconfig.test；`.vue`/脚本不启用类型规则）。`no-explicit-any`/`no-unsafe-*`/`restrict-template-expressions` 七条已是 **error**（P2-4 待办清零后升级，当前基线 0 error 0 warning），别再降回 warn；遇 `catch` 用 `catch (error)` + `error instanceof Error ? error.message : String(error)`，不要写 `any`。自动修复用 `npm run lint:fix`
 - `npm run build:core` — 构建链单一入口：类型检查 + 编译主进程 + Vite 构建（build / build:prod / build:portable / pack-single 都复用它，不要另抄一份步骤）
 - `npm run build` — `build:core` + electron-builder --dir
 - `npm run build:prod` — `build:core` + 产出 NSIS 安装包（--publish=never）

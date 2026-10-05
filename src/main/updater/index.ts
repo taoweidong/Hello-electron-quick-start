@@ -96,9 +96,9 @@ export function getStatus(): UpdateStatusInfo {
 export async function checkForUpdates(): Promise<UpdateStatusInfo> {
   try {
     await autoUpdater.checkForUpdates()
-  } catch (err: any) {
+  } catch (error) {
     // error 事件已归入状态机；此处仅避免未处理的 Promise 拒绝
-    log(`检查更新失败: ${err?.message}`)
+    log(`检查更新失败: ${error instanceof Error ? error.message : String(error)}`)
   }
   return getStatus()
 }

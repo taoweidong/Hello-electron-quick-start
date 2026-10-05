@@ -54,6 +54,16 @@ function compareVersion(a, b) {
  * 关键差异：**解析不出 version 或 files 数组即抛错**，不再静默返回空——
  * 正则静默空数组曾让"对账 0 个文件也算通过"成为可能。
  * 按行状态机：顶层 version、files 列表项（url/sha512/size），容忍 CRLF 与行尾空白。
+ * @typedef {object} ReleaseFile
+ * @property {string} url
+ * @property {string} sha512
+ * @property {number} size
+ * @typedef {object} LatestYml
+ * @property {string} version
+ * @property {ReleaseFile[]} files
+ * @param {string} text
+ * @param {string} [source]
+ * @returns {LatestYml}
  */
 function parseLatestYml(text, source = 'latest.yml') {
   const lines = String(text).split(/\r?\n/)

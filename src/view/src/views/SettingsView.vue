@@ -136,8 +136,8 @@ const saveTheme = async () => {
     } else {
       ElMessage.error(result.error.message || '保存失败')
     }
-  } catch (error: any) {
-    ElMessage.error(`保存失败: ${error.message}`)
+  } catch (error) {
+    ElMessage.error(`保存失败: ${error instanceof Error ? error.message : String(error)}`)
   } finally {
     saving.value = false
   }
