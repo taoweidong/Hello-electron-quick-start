@@ -157,7 +157,7 @@ CI：只跑 `windows-latest`（Windows-only 项目，跨 OS 矩阵对 NSIS/porta
 
 验收：`npm test` 退出码 0 且上面 8 项各有至少一条反向用例；CI 首次绿。
 
-实施记录（2026-10-05）：验收①达成——`npm test` 46 条全部通过（原 23 + 本批 23），8 项各有正向与反向用例，未加一条 `eslint-disable`；全门禁复跑绿（type-check ✓、`eslint .` 0 error / 29 warning（+2，均为旧渲染代码的 any/unsafe）、build ✓ 且产物含三个新接缝模块、`electron:test` ✓）。验收②"CI 首次绿"**待首次 push 后验证**（`.github/workflows/ci.yml` 已按方案就位：windows-latest 单跑、Node 24、npm ci → type-check+eslint → npm test → build:prod，`electron:test` 依方案不进 CI）。实施细节偏离/补充了原方案：
+实施记录（2026-10-05）：验收①达成——`npm test` 46 条全部通过（原 23 + 本批 23），8 项各有正向与反向用例，未加一条 `eslint-disable`；全门禁复跑绿（type-check ✓、`eslint .` 0 error / 29 warning（+2，均为旧渲染代码的 any/unsafe）、build ✓ 且产物含三个新接缝模块、`electron:test` ✓）。验收②已确认——push `aed2880` 后 GitHub Actions run #1（windows-latest）全绿：npm ci → type-check → `eslint .` → `npm test`（46 条）→ `build:prod` 全部通过。实施细节偏离/补充了原方案：
 
 - 对象 1、2（`safeJoin`/`pathGuard`、`pickFeedUrl`/`assertSafeFeedUrl`）的用例已在 B2/B3 批次随实现交付（`tests/zipSlip.test.ts` 等），本批只补 3–8 与 B4 记录承诺的超大包反向用例，不重复。
 - **测试落点保持 `tests/` 目录**而非方案建议的"与源文件同层 `*.test.ts`"：`tsconfig.node.json` 的 include 覆盖 `src/main/**`，同层放置会把测试编译进 `dist/` 产物；`tests/` 经 `tsconfig.test.json` 独立编译到 `dist-test/`，是 B3 前既有的约定。
