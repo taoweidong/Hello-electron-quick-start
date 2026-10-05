@@ -32,13 +32,14 @@
 │   ├── view/               # Vue 3 渲染进程（Vite root）
 │   │   ├── index.html
 │   │   └── src/
-│   │       ├── components/ #   公共组件与文件渲染器（renderers/）
-│   │       ├── services/   #   文件渲染/解压服务（Zip / Rar / Text / Image）
+│   │       ├── components/ #   FileRenderer.vue（按类型分发）+ renderers/（Text/Image/Zip/Rar/Unsupported）
+│   │       ├── composables/#   useFileTree.ts（树状态）、useArchiveDrop.ts（拖放解压，方案 P2-5）
+│   │       ├── services/   #   解压器（FileExtractor 接口 + Zip/Rar 实现 + 工厂）——渲染器死岛已删
 │   │       ├── styles/     #   index.scss（滚动条/动画/工具类；颜色一律 --el-*，无自定义变量块）
 │   │       ├── utils/      #   index.ts（格式化）+ path.ts（双分隔符路径/扩展名解析）
+│   │       │               #   + fileType.ts（扩展名谓词与类型描述单一来源）、fileTree.ts（条目→树纯装配）
 │   │       │               #   + theme.ts（resolveTheme 纯函数 + applyTheme 切 html.dark，方案 P2-3）
-│   │       ├── views/      #   页面（Files / Settings / About 已注册路由；Home 文件保留）
-│   │       ├── store/      #   Pinia
+│   │       ├── views/      #   页面（仅 Files / Settings，两条路由）
 │   │       ├── router/     #   Vue Router
 │   │       ├── types/      #   渲染进程类型声明（含 Window.electronAPI 全局增强）
 │   │       └── main.ts
@@ -49,7 +50,7 @@
 ├── test-main.js            # 冒烟测试（npm run electron:test，自动退出）
 ├── tests/                  # node --test 单元测试（npm run test，纯函数用例：zipSlip / pathGuard / feedUrl /
 │                           #   releaseUtils / viewPath / archiveLimit / workspaceTrySetup / extractorFactory /
-│                           #   theme 九文件）
+│                           #   theme / fileType / fileTree 十一文件）
 ├── scripts/
 │   ├── clean.js            # 清理产物（npm run clean，Node 内置 rmSync，不引 rimraf）
 │   ├── pack-single.js      # 一键打包脚本（npm run build:single，含产物核验与回显）

@@ -1,5 +1,4 @@
 import { createApp } from 'vue'
-import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 // 深色主题变量：挂载在 html.dark class 上，由存储的 theme 值驱动（方案 P2-3）
@@ -11,9 +10,6 @@ import { applyTheme } from './utils/theme'
 import './styles/index.scss'
 
 const app = createApp(App)
-
-// 状态管理
-app.use(createPinia())
 
 // 路由
 app.use(router)
