@@ -134,7 +134,7 @@
 - electron-builder `files` 新增 `!dist/**/*.map`：hidden sourcemap 留在 `dist/view` 供排障但不进 asar，避免与产物体积目标冲突。
 - R7 空归档提示落在渲染层（`result.data.length === 0` → warning），主进程 >500MB 阈值以 `ArchiveTooLargeError` 拒绝并 WARN 落日志；超大包的正式反向用例归 B5 纯函数批补。
 
-### B5 最小验证面（建议，超出你勾选范围 → 待批）
+### B5 最小验证面（✅ 已实施 2026-10-05，用户批准"继续 B5 补测"）
 
 对应发现：E1
 
@@ -156,6 +156,16 @@
 CI：只跑 `windows-latest`（Windows-only 项目，跨 OS 矩阵对 NSIS/portable/`Get-Item VersionInfo`/路径语义只会产无意义红灯）。最小三步：`npm ci` → `npm run type-check` + `npx eslint .` → `npm test` → `npm run build:prod`。**Electron 冒烟不进 CI**（`electron:test` 需 electron 下载 + 桌面会话，每次 +3~5 min 且易受镜像限速影响），改为把脚本写成 `npm run build && npm run electron:test` 作为本地发布前门禁，避免现在这种"忘 build 就 exit 1"的误报。
 
 验收：`npm test` 退出码 0 且上面 8 项各有至少一条反向用例；CI 首次绿。
+
+实施记录（2026-10-05）：验收①达成——`npm test` 46 条全部通过（原 23 + 本批 23），8 项各有正向与反向用例，未加一条 `eslint-disable`；全门禁复跑绿（type-check ✓、`eslint .` 0 error / 29 warning（+2，均为旧渲染代码的 any/unsafe）、build ✓ 且产物含三个新接缝模块、`electron:test` ✓）。验收②"CI 首次绿"**待首次 push 后验证**（`.github/workflows/ci.yml` 已按方案就位：windows-latest 单跑、Node 24、npm ci → type-check+eslint → npm test → build:prod，`electron:test` 依方案不进 CI）。实施细节偏离/补充了原方案：
+
+- 对象 1、2（`safeJoin`/`pathGuard`、`pickFeedUrl`/`assertSafeFeedUrl`）的用例已在 B2/B3 批次随实现交付（`tests/zipSlip.test.ts` 等），本批只补 3–8 与 B4 记录承诺的超大包反向用例，不重复。
+- **测试落点保持 `tests/` 目录**而非方案建议的"与源文件同层 `*.test.ts`"：`tsconfig.node.json` 的 include 覆盖 `src/main/**`，同层放置会把测试编译进 `dist/` 产物；`tests/` 经 `tsconfig.test.json` 独立编译到 `dist-test/`，是 B3 前既有的约定。
+- **为可测性拆出三个零 electron 依赖的接缝模块**（`node --test` 无法加载 import 了 `electron` 的模块）：`src/main/workspace/trySetup.ts`（fs 以 `SetupFs` 接口注入，fake fs 验证成功/mkdir 失败/write 失败/rm 失败四路）、`src/main/security/archiveLimit.ts`（500MB 阈值 + `ArchiveTooLargeError`，B4 超大包反向用例落点）、`src/main/utils/path.ts` 的 `baseName`（原 `file:getInfo` 内联 split 提出；与渲染层 `utils/path.ts` 是双实现，语义改动须两边同步，用例已锁行为）。
+- `scripts/lib/release-utils.js` 测试用 `allowJs: true` + include `scripts/lib/**/*` 直接消费 CJS 源码（曾试 `.d.ts` 伴生声明，因 dist-test 镜像路径解析与 allowJs 遮蔽 emit 的问题放弃）。
+- 对象 3 的 `parseLatestYml` 反向用例覆盖缺 `files` 段、`files` 段为空、条目缺 sha512/缺 size/缺 version 五种抛错 + CRLF/行尾空格/顶层噪声键正向；`sha512File` 用 tmp 文件对 `node:crypto` 实算对账（base64/hex）。**`getProductVersion` 不写单测**：依赖 win32 PE 元数据与 PowerShell，属发布运行路径（`pack-single --verify-only` 与 release 实测已覆盖），单测化收益为负。
+- `viewPath.test.ts` 显式锁定 `extname('x.tar.gz') === '.gz'` 等现行为（多段压缩后缀不是 bug 是约定，用例防无意改语义）。
+- `eslint.config.mjs` 的 `disableTypeChecked` 块补 `scripts/**/*.ts` 正向模式（本批未新增 scripts 下 .ts，属预防性对齐，类型规则不参与该目录）。
 
 ## 2. P2/P3 待办（登记，本轮不实施）
 

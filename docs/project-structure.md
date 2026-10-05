@@ -19,9 +19,11 @@
 │   ├── main/               # Electron 主进程（TypeScript）
 │   │   ├── index.ts        #   入口：窗口、菜单、SQLite 初始化、外链/导航白名单、进程级异常兜底
 │   │   ├── logger.ts       #   工作目录 logs/app.log 写入（超 5MB 轮转 app.log.1）
-│   │   ├── security/       #   zipSlip.ts（条目名 safeJoin）+ pathGuard.ts（读写根授权）
+│   │   ├── security/       #   zipSlip.ts（条目名 safeJoin）+ pathGuard.ts（读写根授权）+ archiveLimit.ts（归档 500MB 上限，零 electron）
 │   │   ├── preload.ts      #   contextBridge 暴露 window.electronAPI
+│   │   ├── utils/          #   path.ts（主进程 baseName 双分隔符解析，零 electron）
 │   │   ├── workspace/      #   工作目录解析（默认 D:\MyWinApp，env 覆盖，回落 userData，不可写则抛错）
+│   │   │                   #   trySetup.ts（目录建立 + 写探测，fs 经 SetupFs 接口注入，零 electron）
 │   │   ├── db/             #   node:sqlite 数据库单例与 settings 键值表（data/app.db，WAL）
 │   │   ├── updater/        #   electron-updater 自动更新（两级更新源 + 源校验、状态机、事件推送）
 │   │   └── ipc/            #   ipcSafe.ts（统一注册 + IpcResult 包装）与处理器
@@ -41,8 +43,10 @@
 │   └── shared/             # 主/渲染进程共享代码（别名 @shared）
 │       ├── constants/      #   常量（仅 index.ts，单一来源）
 │       └── types/          #   共享类型（electron.d.ts：ElectronAPI + IpcResult<T> 单一来源）
+├── .github/workflows/ci.yml # CI（windows-latest：npm ci → type-check + eslint → npm test → build:prod；electron:test 不进 CI）
 ├── test-main.js            # 冒烟测试（npm run electron:test，自动退出）
-├── tests/                  # node --test 单元测试（npm run test，纯函数用例：zipSlip 等）
+├── tests/                  # node --test 单元测试（npm run test，纯函数用例：zipSlip / pathGuard / feedUrl /
+│                           #   releaseUtils / viewPath / archiveLimit / workspaceTrySetup / extractorFactory 八文件）
 ├── scripts/
 │   ├── clean.js            # 清理产物（npm run clean，Node 内置 rmSync，不引 rimraf）
 │   ├── pack-single.js      # 一键打包脚本（npm run build:single，含产物核验与回显）
@@ -75,6 +79,11 @@
    `VITE_DEV_SERVER_URL=http://localhost:5180`，Electron 加载 Vite 开发服务器。
 5. **打包**：`electron-builder.json` 的 `files` 不再显式包含 `node_modules`，
    electron-builder 自动附带生产依赖，安装包体积显著减小。
+6. **可单测纯函数约定**：`node --test` 无法加载 import 了 `electron` 的模块，故需要直测的纯函数
+   独立成零 electron 接缝模块（`workspace/trySetup.ts`、`security/archiveLimit.ts`、
+   `main/utils/path.ts`、`scripts/lib/release-utils.js`），fs 类副作用经接口注入；测试文件一律放
+   `tests/`（经 tsconfig.test 编译到 `dist-test/`），不与源文件同层，避免进 `dist/` 产物。
+   `baseName` 在主进程与渲染层是双实现，改语义两边同步，用 `tests/` 用例锁行为。
 
 ## 常用命令
 

@@ -104,7 +104,7 @@ export default tseslint.config(
     // 必须放在最后——flat config 后者覆盖前者；且 files 不能含 `!` 取反模式
     // （ESLint 10 实测：混合正/负模式会让该对象匹配除取反外的所有文件）
     ...tseslint.configs.disableTypeChecked,
-    files: ['**/*.vue', '**/*.js', '**/*.mjs', 'vite.config.ts']
+    files: ['**/*.vue', '**/*.js', '**/*.mjs', 'scripts/**/*.ts', 'vite.config.ts']
   },
   {
     // 根目录 CJS 脚本（如 test-main.js）保留 require 风格

@@ -1,0 +1,25 @@
+# 方案 B5/CI：Windows-only 项目只跑 windows-latest（跨 OS 矩阵对 NSIS/portable/
+# Get-Item VersionInfo/路径语义只会产无意义红灯）。
+# Electron 冒烟（electron:test）不进 CI：需 electron 下载 + 桌面会话，本地发布前
+# 用 `npm run build && npm run electron:test` 作门禁。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run type-check
+      - run: npx eslint .
+      - run: npm test
+      - run: npm run build:prod

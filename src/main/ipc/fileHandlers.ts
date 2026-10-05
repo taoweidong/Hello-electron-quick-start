@@ -5,30 +5,23 @@ import JSZip from 'jszip'
 import { createExtractorFromData } from 'node-unrar-js'
 import { safeJoin, isRootPlaceholder } from '../security/zipSlip'
 import { assertPathAllowed } from '../security/pathGuard'
+import { assertArchiveSize } from '../security/archiveLimit'
+import { baseName } from '../utils/path'
 import { logWarn } from '../logger'
 import { ipcSafe } from './ipcSafe'
 import type { ExtractedFileInfo, FileInfo } from '../../shared/types/electron'
 
 // 文件操作处理器（B3 起统一走 ipcSafe：抛错即 {ok:false,error}，返回值即 {ok:true,data}）
 
-// 归档体积阈值（方案 B4/R7 非 Worker 部分）：zip 走 JSZip 全量入内存、rar 走 WASM
-// 数据解压，超大包是 OOM 风险而不是慢——直接拒绝并给出明确错误，不做流式解压
-const MAX_ARCHIVE_BYTES = 500 * 1024 * 1024
-
-class ArchiveTooLargeError extends Error {
-  constructor(msg: string) {
-    super(msg)
-    this.name = 'ArchiveTooLargeError'
-  }
-}
-
+// 归档体积预检（方案 B4/R7）：阈值判定纯函数在 security/archiveLimit.ts（B5 直测），
+// 这里只负责 stat 与拒绝日志
 async function assertArchiveWithinLimit(archivePath: string): Promise<void> {
   const stats = await fsp.stat(archivePath)
-  if (stats.size > MAX_ARCHIVE_BYTES) {
+  try {
+    assertArchiveSize(stats.size, archivePath)
+  } catch (error) {
     logWarn(`拒绝解压超大归档: ${archivePath}（${(stats.size / 1024 / 1024).toFixed(1)} MB）`)
-    throw new ArchiveTooLargeError(
-      `归档体积 ${(stats.size / 1024 / 1024).toFixed(1)} MB 超过上限 ${MAX_ARCHIVE_BYTES / 1024 / 1024} MB，已拒绝解压（防止内存耗尽），请拆分后重试`
-    )
+    throw error
   }
 }
 
@@ -191,7 +184,7 @@ ipcSafe('file:getInfo', async (event, filePath: string): Promise<FileInfo> => {
   const stats = await fsp.stat(filePath)
 
   return {
-    name: filePath.split(/[\\/]/).pop(),
+    name: baseName(filePath),
     path: filePath,
     size: stats.size,
     isDirectory: stats.isDirectory(),
