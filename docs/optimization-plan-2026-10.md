@@ -173,13 +173,15 @@ CI：只跑 `windows-latest`（Windows-only 项目，跨 OS 矩阵对 NSIS/porta
 |---|---|---|
 | P2-1 | 死代码清理 D1/D2：删 `services/` 渲染器死岛 6 文件、`HomeView.vue`、`AboutView.vue`、`SidebarMenu.vue`、未用的 `store/index.ts`、`PLATFORMS`/`STORAGE_KEYS`、`meta.keepAlive` | 与"重构 FilesView"同批做（D5），删死岛与合并三处扩展名清单可共用一个 commit，回归面集中在 `FilesView.vue` |
 | P2-2 | 常量与身份漂移 D4：`shared/constants` 的 APP_NAME/VERSION/AUTHOR 与 `electron-builder.json` 的 appId/copyright 对齐真实值；标题改由单一来源驱动 | 下次发版前（影响 `app:getInfo` 展示与安装器元数据） |
-| P2-3 | 主题功能闭环 D3：把 `theme` 接到 Element Plus 的 `dark` class 与实际样式变量 | 用户可感知缺陷，建议优先于纯清理项 |
+| P2-3 | 主题功能闭环 D3：把 `theme` 接到 Element Plus 的 `dark` class 与实际样式变量（✅ 已实施 2026-10-05，见下方记录） | 用户可感知缺陷，建议优先于纯清理项 |
 | P2-4 | `any` 收敛 C4（约 41 处）+ 开 `noUncheckedIndexedAccess`/`exactOptionalPropertyTypes` | B3/B4 合入且 `no-explicit-any` 已降 warn 之后单独一批，否则 diff 不可审 |
 | P2-5 | `FilesView.vue` 448 行拆分（`useFileTree`/`useArchiveDrop` composable） | 与 P2-1 同批 |
 | P3-1 | Element Plus 按需引入（`unplugin-vue-components` + `unplugin-auto-import`） | 有包体积/启动耗时基线数据后再决定（当前收益量级未知，见报告 §9） |
 | P3-2 | 大文件流式/Worker 解压、渲染层进度与取消 | 有 >200MB 真实使用场景时；Worker 在 asar 内需同步调 `electron-builder.json` 的 `files` 白名单 |
 | P3-3 | CHANGELOG + `sandbox: true` 评估 + `.nvmrc`/`.editorconfig` | 与下一次功能迭代同批 |
-| P3-4 | UI 一致性 D6：`FilesView.vue:345-447` 的 14 处硬编码色值换 `--el-*`/`variables.scss` 变量；补 `aria-*` 与拖放区键盘替代入口 | 有 UI 改版时 |
+| P3-4 | UI 一致性 D6：~~硬编码色值换 `--el-*`~~（✅ 随 P2-3 于 2026-10-05 完成，`variables.scss` 反被删除）；剩 `aria-*` 与拖放区键盘替代入口 | 有 UI 改版时 |
+
+P2-3 实施记录（2026-10-05）：`theme` 存储值现真实驱动界面。**机制层**——`main.ts` 引入 `element-plus/theme-chalk/dark/css-vars.css`（深色变量挂在 `html.dark` class 上，全局 `--el-*` 随之翻转），并在 `app.mount` 前 `await getSetting('theme')` 调 `applyTheme`（try/catch/finally：任何失败回落 light 且**必挂载**，含浏览器直开无 `electronAPI` 场景）；`resolveTheme` 纯函数白名单收编（仅精确 `'dark'` 为深色，DB 脏值/大小写/`auto` 全回落 light），`applyTheme` 切 class，`tests/theme.test.ts` 覆盖正反例（48 条测试全过）。SettingsView 保存成功后 `applyTheme` 即时生效，文案改「立即生效并在重启后保留」。**样式层**——删除 `index.scss` 的自定义 `:root` 变量组与 `prefers-color-scheme` 暗色块（系统轨与应用轨双份漂移面），滚动条三处换 `--el-*`；FilesView 19 处 + ImageFileRenderer 1 处硬编码 hex 按用途换等价 `--el-*`（如 `#303133→--el-text-color-primary`、`#fafafa→--el-fill-color-lighter`、`#409eff→--el-color-primary`）。**意外收获**：`variables.scss` 经 vite `additionalData` 被注入每个 SCSS 编译单元（其内容非 `$` 变量而是 `:root` CSS 块 → 复制进每个 .vue/.scss），是缺陷而非依赖，连同注入一并移除。验证：`npm test`(48)/type-check/`eslint .`(0 error，29 warning 持平)/`build`/`electron:test` 全绿；浏览器深色核对 `html.dark` 下 `--el-bg-color`→#141414、card bg→#1d1e1f、drop-zone 边框→#4c4d4f（此前"边框不翻"实为 `transition` 插值时序 + 隐藏页 rAF 冻结的探针假象，关闭过渡后即时解析正确）。P3-4 的 aria/键盘入口未做（有 UI 改版再做）。回滚：单 commit revert，SQLite 存量 `theme` 值不受影响。
 
 ## 3. 明确不做（及理由）
 

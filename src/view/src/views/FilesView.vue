@@ -367,7 +367,7 @@ onMounted(() => {
 
 .panel-header h2 {
   margin: 0;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .file-tree-panel,
@@ -379,32 +379,32 @@ onMounted(() => {
 
 .drop-zone {
   flex: 1;
-  border: 2px dashed #dcdfe6;
+  border: 2px dashed var(--el-border-color);
   border-radius: 6px;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
   min-height: 300px;
   transition: border-color 0.3s;
-  background-color: #fafafa;
+  background-color: var(--el-fill-color-lighter);
   padding: 20px;
 }
 
 .drop-zone:hover {
-  border-color: #409eff;
-  background-color: #f0f9ff;
+  border-color: var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
 }
 
 /* 解压进行中：灰化 + 禁止指针，配合 handleDrop 的拒绝逻辑（方案 B4/R7） */
 .drop-zone.is-extracting {
   cursor: progress;
-  background-color: #f5f7fa;
-  border-color: #e4e7ed;
+  background-color: var(--el-fill-color-light);
+  border-color: var(--el-border-color-light);
 }
 
 .drop-zone.is-extracting:hover {
-  border-color: #e4e7ed;
-  background-color: #f5f7fa;
+  border-color: var(--el-border-color-light);
+  background-color: var(--el-fill-color-light);
 }
 
 .extracting-hint {
@@ -415,7 +415,7 @@ onMounted(() => {
   width: 100%;
   min-height: 200px;
   gap: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 15px;
 }
 
@@ -427,7 +427,7 @@ onMounted(() => {
 .drop-zone .el-icon {
   font-size: 48px;
   margin-bottom: 16px;
-  color: #c0c4cc;
+  color: var(--el-text-color-disabled);
 }
 
 .drop-zone > div {
@@ -443,25 +443,25 @@ onMounted(() => {
 .file-icon {
   margin-right: 8px;
   font-size: 16px;
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 
 .file-label {
   font-size: 14px;
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 
 .file-detail-icon {
   margin-right: 8px;
   font-size: 18px;
-  color: #409eff;
+  color: var(--el-color-primary);
 }
 
 .card-header {
   display: flex;
   align-items: center;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .file-info-card,
@@ -474,7 +474,7 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   min-height: 200px;
-  background-color: #f5f7fa;
+  background-color: var(--el-fill-color-light);
   border-radius: 4px;
 }
 
@@ -488,11 +488,11 @@ onMounted(() => {
 }
 
 :deep(.el-tree-node__content:hover) {
-  background-color: #f5f7fa;
+  background-color: var(--el-fill-color-light);
 }
 
 :deep(.el-tree-node.is-current > .el-tree-node__content) {
-  background-color: #ecf5ff;
-  color: #409eff;
+  background-color: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
 }
 </style>

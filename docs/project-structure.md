@@ -34,7 +34,9 @@
 │   │   └── src/
 │   │       ├── components/ #   公共组件与文件渲染器（renderers/）
 │   │       ├── services/   #   文件渲染/解压服务（Zip / Rar / Text / Image）
+│   │       ├── styles/     #   index.scss（滚动条/动画/工具类；颜色一律 --el-*，无自定义变量块）
 │   │       ├── utils/      #   index.ts（格式化）+ path.ts（双分隔符路径/扩展名解析）
+│   │       │               #   + theme.ts（resolveTheme 纯函数 + applyTheme 切 html.dark，方案 P2-3）
 │   │       ├── views/      #   页面（Files / Settings / About 已注册路由；Home 文件保留）
 │   │       ├── store/      #   Pinia
 │   │       ├── router/     #   Vue Router
@@ -46,7 +48,8 @@
 ├── .github/workflows/ci.yml # CI（windows-latest：npm ci → type-check + eslint → npm test → build:prod；electron:test 不进 CI）
 ├── test-main.js            # 冒烟测试（npm run electron:test，自动退出）
 ├── tests/                  # node --test 单元测试（npm run test，纯函数用例：zipSlip / pathGuard / feedUrl /
-│                           #   releaseUtils / viewPath / archiveLimit / workspaceTrySetup / extractorFactory 八文件）
+│                           #   releaseUtils / viewPath / archiveLimit / workspaceTrySetup / extractorFactory /
+│                           #   theme 九文件）
 ├── scripts/
 │   ├── clean.js            # 清理产物（npm run clean，Node 内置 rmSync，不引 rimraf）
 │   ├── pack-single.js      # 一键打包脚本（npm run build:single，含产物核验与回显）
@@ -84,6 +87,10 @@
    `main/utils/path.ts`、`scripts/lib/release-utils.js`），fs 类副作用经接口注入；测试文件一律放
    `tests/`（经 tsconfig.test 编译到 `dist-test/`），不与源文件同层，避免进 `dist/` 产物。
    `baseName` 在主进程与渲染层是双实现，改语义两边同步，用 `tests/` 用例锁行为。
+7. **主题闭环**：渲染层颜色一律使用 Element Plus 的 `--el-*` 变量，禁止硬编码色值；深/浅色由
+   `html.dark` class 翻转（`utils/theme.ts` 的 `applyTheme` 负责切换，`main.ts` 挂载前应用存储的
+   `theme` 值，SettingsView 保存即时生效）。不要恢复 vite `additionalData` 注入 SCSS 全局片段
+   （会把样式块复制进每个编译单元）。
 
 ## 常用命令
 

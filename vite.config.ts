@@ -35,12 +35,7 @@ export default defineConfig({
       '@': resolve(__dirname, './src/view/src'),
       '@shared': resolve(__dirname, './src/shared')
     }
-  },
-  css: {
-    preprocessorOptions: {
-      scss: {
-        additionalData: `@use "@/styles/variables.scss" as *;`
-      }
-    }
   }
+  // 无 css.preprocessorOptions：原 additionalData 注入 variables.scss 会把 :root CSS 块
+  // 复制进每个编译单元（它并不定义 SCSS $ 变量），深/浅色统一由 EP --el-* 变量承担（方案 P2-3）
 })

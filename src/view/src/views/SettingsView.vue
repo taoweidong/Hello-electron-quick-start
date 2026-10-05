@@ -17,7 +17,7 @@
 
     <el-card shadow="never" class="settings-card">
       <template #header>
-        <div class="card-header"><span>主题偏好（SQLite 存储示例）</span></div>
+        <div class="card-header"><span>主题偏好</span></div>
       </template>
       <div class="theme-row">
         <el-select v-model="theme" style="width: 200px" placeholder="选择主题">
@@ -26,7 +26,7 @@
         </el-select>
         <el-button type="primary" :loading="saving" @click="saveTheme">保存</el-button>
       </div>
-      <p class="hint">该配置写入工作目录下 data/app.db 的 settings 表，应用重启后仍生效。</p>
+      <p class="hint">该配置写入工作目录下 data/app.db 的 settings 表，保存后立即生效并在重启后保留。</p>
     </el-card>
 
     <el-card shadow="never" class="settings-card">
@@ -65,6 +65,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UpdateStatusInfo, WorkspaceInfo, Unsubscribe } from '@shared/types/electron'
+import { applyTheme } from '@/utils/theme'
 
 const workspace = ref<WorkspaceInfo | null>(null)
 const theme = ref('light')
@@ -129,7 +130,9 @@ const saveTheme = async () => {
   try {
     const result = await window.electronAPI.setSetting('theme', theme.value)
     if (result.ok) {
-      ElMessage.success('已保存，应用重启后仍生效')
+      // 保存即生效（方案 P2-3）：先落库、再切 class，失败不动当前主题
+      applyTheme(theme.value)
+      ElMessage.success('已保存，主题立即生效（重启后保留）')
     } else {
       ElMessage.error(result.error.message || '保存失败')
     }
