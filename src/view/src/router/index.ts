@@ -34,12 +34,13 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
-  // 设置页面标题（RouteMeta.title 已由下方模块增强声明为 string，模板串安全）
+// vue-router 5 起 `next()` 回调形态已废弃（VUE_ROUTER_R0025）：守卫不返回即视为放行
+// （2026-10-02 依赖升级 design.md 已列出该迁移项，当时未做，现随 P3-5 补齐）
+router.beforeEach((to) => {
+  // 设置页面标题（RouteMeta.title 已由上方模块增强声明为 string，模板串安全）
   if (to.meta.title) {
     document.title = `${to.meta.title} - ${APP_CONSTANTS.APP_NAME}`
   }
-  next()
 })
 
 export default router
