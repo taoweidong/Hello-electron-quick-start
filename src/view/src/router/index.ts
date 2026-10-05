@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
+import { APP_CONSTANTS } from '@shared/constants'
 
 // 路由 meta 类型单一来源：模板串/读取处不再拿到 unknown（方案 B4，消 no-base-to-string）
 // keepAlive/icon 曾在此声明但 App.vue 没有 KeepAlive、侧边栏已删，读取方为 0（方案 P2-1）
@@ -36,7 +37,7 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   // 设置页面标题（RouteMeta.title 已由下方模块增强声明为 string，模板串安全）
   if (to.meta.title) {
-    document.title = `${to.meta.title} - My Electron App`
+    document.title = `${to.meta.title} - ${APP_CONSTANTS.APP_NAME}`
   }
   next()
 })

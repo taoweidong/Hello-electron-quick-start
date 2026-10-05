@@ -6,6 +6,7 @@ import { getDb, closeDb } from './db'
 import { initUpdater } from './updater'
 import { grantRootDir } from './security/pathGuard'
 import { logInfo, logWarn, logError, logErrorWithStack } from './logger'
+import { APP_CONSTANTS } from '../shared/constants'
 
 // 渲染层可请求用系统浏览器打开的外链域名白名单（其余一律拒绝，见方案 B1/S4）
 const ALLOWED_EXTERNAL_HOSTS = ['github.com']
@@ -60,9 +61,13 @@ process.on('unhandledRejection', (reason) => {
 
 let win: BrowserWindow | null = null
 
+// 开发态的 name 来自 package.json（my-win-app），打包态来自 productName：
+// 显式设成常量，标题栏/任务栏/原生菜单在开发与发行两轨一致（方案 P2-2）
+app.name = APP_CONSTANTS.APP_NAME
+
 async function createWindow() {
   win = new BrowserWindow({
-    title: 'My Electron App',
+    title: APP_CONSTANTS.APP_NAME,
     webPreferences: {
       preload,
       nodeIntegration: false,
@@ -259,7 +264,7 @@ function createApplicationMenu() {
           click: () => {
             // shell 顶部已导入，不再为一次调用动态 import（同上：void 收敛 Promise）
             void shell
-              .openExternal('https://github.com/taoweidong/Hello-electron-quick-start')
+              .openExternal(APP_CONSTANTS.HOMEPAGE)
               .catch((error: unknown) => logError(`打开关于页面失败: ${(error as Error).message}`))
           }
         }

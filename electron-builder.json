@@ -1,7 +1,7 @@
 {
-  "appId": "com.yourcompany.yourapp",
+  "appId": "com.nineaiyu.mywinapp",
   "productName": "My-Win-App",
-  "copyright": "Copyright © 2024 Your Company",
+  "copyright": "Copyright © 2026 nineaiyu",
   "directories": {
     "output": "release"
   },

@@ -2,7 +2,7 @@
   "name": "my-win-app",
   "version": "1.0.1",
   "description": "现代化 Electron + Vue 3 + TypeScript 桌面应用",
-  "author": "Your Name",
+  "author": "nineaiyu",
   "license": "MIT",
   "main": "dist/main/main/index.js",
   "type": "commonjs",

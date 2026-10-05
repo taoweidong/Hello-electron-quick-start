@@ -44,13 +44,13 @@
 │   │       ├── types/      #   渲染进程类型声明（含 Window.electronAPI 全局增强）
 │   │       └── main.ts
 │   └── shared/             # 主/渲染进程共享代码（别名 @shared）
-│       ├── constants/      #   常量（仅 index.ts，单一来源）
+│       ├── constants/      #   身份常量单一来源（APP_NAME/AUTHOR/HOMEPAGE；版本在 package.json）
 │       └── types/          #   共享类型（electron.d.ts：ElectronAPI + IpcResult<T> 单一来源）
 ├── .github/workflows/ci.yml # CI（windows-latest：npm ci → type-check + eslint → npm test → build:prod；electron:test 不进 CI）
 ├── test-main.js            # 冒烟测试（npm run electron:test，自动退出）
 ├── tests/                  # node --test 单元测试（npm run test，纯函数用例：zipSlip / pathGuard / feedUrl /
 │                           #   releaseUtils / viewPath / archiveLimit / workspaceTrySetup / extractorFactory /
-│                           #   theme / fileType / fileTree 十一文件）
+│                           #   theme / fileType / fileTree / identity 十二文件）
 ├── scripts/
 │   ├── clean.js            # 清理产物（npm run clean，Node 内置 rmSync，不引 rimraf）
 │   ├── pack-single.js      # 一键打包脚本（npm run build:single，含产物核验与回显）
@@ -98,6 +98,10 @@
    `restrict-template-expressions` 七条为 **error**，基线 0 error 0 warning，不要新增
    `eslint-disable`，也不要只给某一份 tsconfig 配严格标志。`catch` 统一
    `catch (error)` + `instanceof Error` 收窄。
+9. **身份单一来源（P2-2）**：应用名/作者/主页只在 `src/shared/constants/index.ts`，
+   `app.name`、窗口标题、文档标题、`app:getInfo`、菜单"关于"都读它；版本只在
+   `package.json`（运行时 `app.getVersion()`）。`electron-builder.json` 的
+   `productName`/`copyright` 与 `package.json.author` 的一致性由 `tests/identity.test.ts` 守卫。
 
 ## 常用命令
 
