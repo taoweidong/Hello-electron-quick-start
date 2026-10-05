@@ -5,7 +5,7 @@
 | 技术 | 版本 | 说明 |
 |------|------|------|
 | **Electron** | 44.5.1 | 运行时内嵌 Node 24.21 / Chromium 152 |
-| **Vue** | 3.5.43 | 渲染进程（vue-router 5 / Pinia 4） |
+| **Vue** | 3.5.43 | 渲染进程（vue-router 5；状态用 composable，不引 Pinia） |
 | **Element Plus** | 2.14.7 | UI 组件库 |
 | **TypeScript** | 6.0.3 | TS 7 原生编译器暂不兼容 vue-tsc（锁定 6.x） |
 | **Vite** | 8.3.2 | Rolldown 引擎，渲染进程构建 |
