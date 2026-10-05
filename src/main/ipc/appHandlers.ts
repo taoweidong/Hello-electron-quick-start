@@ -1,24 +1,38 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron'
 import { cpus } from 'node:os'
+import { dirname } from 'node:path'
 import { APP_CONSTANTS } from '../../shared/constants'
+import { grantReadDir, grantWriteDir } from '../security/pathGuard'
 
-// 对话框处理
+// 对话框处理：用户亲自选定的路径是合法授权来源，成功分支里登记进 pathGuard（方案 B2/S2）
 ipcMain.handle('dialog:openFile', async (event, options) => {
   const win = BrowserWindow.fromWebContents(event.sender)
   if (!win) return { canceled: true, filePaths: [] }
-  
+
+  const properties = options?.properties || []
   const result = await dialog.showOpenDialog(win, {
     ...options,
-    properties: ['openFile', ...(options.properties || [])]
+    properties: ['openFile', ...properties]
   })
+  if (!result.canceled) {
+    const openDirectory = properties.includes('openDirectory')
+    for (const selected of result.filePaths) {
+      // 选中目录时只授权该目录本身；选中文件时连同所在目录（便于后续读同级文件）
+      grantReadDir(selected)
+      if (!openDirectory) grantReadDir(dirname(selected))
+    }
+  }
   return result
 })
 
 ipcMain.handle('dialog:saveFile', async (event, options) => {
   const win = BrowserWindow.fromWebContents(event.sender)
   if (!win) return { canceled: true, filePath: '' }
-  
+
   const result = await dialog.showSaveDialog(win, options)
+  if (!result.canceled && result.filePath) {
+    grantWriteDir(dirname(result.filePath))
+  }
   return result
 })
 

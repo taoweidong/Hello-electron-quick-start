@@ -23,7 +23,7 @@
     "test": "tsc -p tsconfig.test.json && node --test \"dist-test/tests/**/*.test.js\"",
     "test:watch": "tsc -p tsconfig.test.json && node --test --watch \"dist-test/tests/**/*.test.js\"",
     "preview": "vite preview",
-    "clean": "rimraf dist release *.tsbuildinfo"
+    "clean": "node scripts/clean.js"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",

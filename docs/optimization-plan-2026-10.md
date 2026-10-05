@@ -39,7 +39,7 @@
 - **严格拒绝会误伤合法归档**：Windows 自带 `tar.exe -a -cf x.zip .` 会产生名为 `/` 的根占位条目，一律抛错会让这类包整解压失败。故新增 `isRootPlaceholder()`：目录型占位条目跳过，文件型仍按异常拒绝。
 - **测试链路**：根包 `type: commonjs` 下 Node 24 的原生 type stripping 不能跑 ESM 语法的 `.ts`，`npm run test` 先 `tsc -p tsconfig.test.json` 产出 `dist-test/` 再 `node --test`；`type-check` 追加同一配置的 `--noEmit` 检查，`dist-test/` 与 `eslint` 均已 ignore。
 
-### B2 断链 —— 路径根 + 更新源校验（本轮 P0 收口）
+### B2 断链 —— 路径根 + 更新源校验（本轮 P0 收口）（✅ 已实施 2026-10-05）（✅ 已实施 2026-10-05）
 
 对应发现：S2、S3、S8、R1（+ S4 的白名单集中化）
 规模：约 8 文件 / 200 行
@@ -76,6 +76,12 @@
 
 验收：① `npm run clean` 退出码 0 且三项目录确实消失；② `file:read` 一个允许集外的路径（如 `C:\Windows\win.ini`）必须返回权限错误；③ 构造 `update.url = http://attacker/` 经 IPC 写入 → 必须被拒且 `app.log` 留痕；④ 改内置源为 https 后 `npm run release:collect` 仍通过（它不上传，可安全跑）；⑤ 拖入含 `MYWIN~1` 或 junction 路径的用例做一轮人工验证（若本机有该条件）。
 回滚：`pathGuard` 是新增文件 + handler 入口插桩，revert 即回到原行为；`electron-builder.json`/`release.config.json` 的 URL 变更需在 commit body 标注，回滚时同步。
+
+实施记录（2026-10-05）：门禁全绿——`npm run test`（新增 pathGuard 8 条 + feedUrl 7 条，连同 zipSlip 共 23 条通过）、`type-check`、`eslint .`（无 `--fix`）、`build`、`electron:test`、`release:collect`、`clean`（原 `rimraf` 根本不在依赖里，命令一直是坏的，已改 `scripts/clean.js`）。三点实施期决策改变了原方案细节：
+
+- **`update.url` 直接从可写白名单剔除**（§4-2 建议口径）：`settings:set` 的 `WRITABLE_KEYS` 只留 `theme`，更新源降为两级（env > 打包内置），因此不需要对 settings 值做 `assertSafeFeedUrl`——渲染层已无法写入该键。
+- **内置源保留 `http://localhost:58132/update/`**：真实 https 域名仍是待决外部项；`assertSafeFeedUrl` 按决策允许 http 明文（本地/内网源），补偿控制为主机白名单（`MYWINAPP_UPDATE_HOSTS` ∪ 内置源主机 ∪ 回环）+ 拒绝 URL 内嵌凭据 + 日志脱敏 `redactUrl`。验收 ④ 的"改 https"部分随之搁置，其余照常通过。
+- **压缩包来源路径不做读限制**：路径只可能来自用户亲自拖入（`getPathForFile`）或 dialog 选定，前者解压时不校验来源、后者登记进允许集；解压目标一律 `assertPathAllowed(..., 'write')`。`win.ini` 越界拒绝与 junction/8.3 短名判定由 pathGuard 单测以真实路径覆盖（验收 ②⑤），`update.url` IPC 拒绝（验收 ③）由 `WRITABLE_KEYS` 白名单直接成立。
 
 ### B3 IPC 契约统一（破坏性，一次性改完）
 

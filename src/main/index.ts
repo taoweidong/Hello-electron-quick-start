@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { resolveWorkspace } from './workspace'
 import { getDb, closeDb } from './db'
 import { initUpdater } from './updater'
+import { grantRootDir } from './security/pathGuard'
 import { logInfo, logWarn, logError, logErrorWithStack } from './logger'
 
 // 渲染层可请求用系统浏览器打开的外链域名白名单（其余一律拒绝，见方案 B1/S4）
@@ -146,6 +147,8 @@ app
     } catch (error) {
       logError(`Database init failed: ${(error as Error).message}`)
     }
+    // 解压根登记进路径允许集：渲染层只能在这里读写，加上 dialog 选定目录（方案 B2/S2）
+    grantRootDir(join(app.getPath('userData'), 'extracted'))
     // 自动更新（更新源由环境变量或打包内置 app-update.yml 决定，见方案 B2/S3）
     initUpdater((msg) => logInfo(`[updater] ${msg}`))
     createWindow()

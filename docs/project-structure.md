@@ -19,11 +19,11 @@
 │   ├── main/               # Electron 主进程（TypeScript）
 │   │   ├── index.ts        #   入口：窗口、菜单、SQLite 初始化、外链/导航白名单、进程级异常兜底
 │   │   ├── logger.ts       #   工作目录 logs/app.log 写入（超 5MB 轮转 app.log.1）
-│   │   ├── security/       #   zipSlip.ts：压缩包条目名的路径校验（safeJoin / isRootPlaceholder）
+│   │   ├── security/       #   zipSlip.ts（条目名 safeJoin）+ pathGuard.ts（读写根授权）
 │   │   ├── preload.ts      #   contextBridge 暴露 window.electronAPI
 │   │   ├── workspace/      #   工作目录解析（默认 D:\MyWinApp，env 覆盖，回落 userData，不可写则抛错）
 │   │   ├── db/             #   node:sqlite 数据库单例与 settings 键值表（data/app.db，WAL）
-│   │   ├── updater/        #   electron-updater 自动更新（三级更新源、状态机、事件推送）
+│   │   ├── updater/        #   electron-updater 自动更新（两级更新源 + 源校验、状态机、事件推送）
 │   │   └── ipc/            #   ipcMain.handle 处理器（appHandlers / fileHandlers /
 │   │                       #   workspaceHandlers / settingsHandlers / updateHandlers）
 │   ├── view/               # Vue 3 渲染进程（Vite root）
@@ -42,6 +42,7 @@
 ├── test-main.js            # 冒烟测试（npm run electron:test，自动退出）
 ├── tests/                  # node --test 单元测试（npm run test，纯函数用例：zipSlip 等）
 ├── scripts/
+│   ├── clean.js            # 清理产物（npm run clean，Node 内置 rmSync，不引 rimraf）
 │   ├── pack-single.js      # 一键打包脚本（npm run build:single，含产物核验与回显）
 │   └── release.js          # 发布流水线（npm run release：对账核验 + 归集 + PUT 上传 + 校验）
 ├── release.config.json     # 发布配置（upload.url；凭据经 RELEASE_UPLOAD_AUTH 环境变量）
@@ -72,7 +73,8 @@
 ## 常用命令
 
 - 开发：`npm run electron:dev`（先编译主进程，再并行启动 Vite 与 Electron）
-- 类型检查：`npm run type-check`（vue-tsc 检查渲染进程，tsc 检查主进程，真实生效）
+- 类型检查：`npm run type-check`（vue-tsc 检查渲染进程，tsc 检查主进程与测试，真实生效）
+- 单元测试：`npm run test`（tsc 预编译 `tests/` 到 `dist-test/` 后 `node --test`）
 - 冒烟测试：`npm run build && npm run electron:test`
 - 打包目录版：`npm run build`；NSIS 安装包：`npm run build:prod`；便携版：`npm run build:portable`
 - 清理：`npm run clean`

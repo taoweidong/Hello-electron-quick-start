@@ -1,9 +1,18 @@
 import { app, BrowserWindow } from 'electron'
 import { autoUpdater } from 'electron-updater'
-import { getSetting } from '../db'
+import { logWarn } from '../logger'
+import {
+  assertSafeFeedUrl,
+  hostOf,
+  parseHostList,
+  pickFeedUrl,
+  readBuiltinFeedUrl,
+  redactUrl
+} from './feedUrl'
 
-// 自动更新：generic provider，三级更新源（env > settings 表 update.url > 打包内置 app-update.yml），
-// 状态机归一化后经 update:status 事件推送（见 openspec specs/auto-update 与 design D2-D4）
+// 自动更新：generic provider，两级更新源（env MYWINAPP_UPDATE_URL > 打包内置 app-update.yml），
+// 状态机归一化后经 update:status 事件推送（见 openspec specs/auto-update 与 design D2-D4）。
+// settings 表 update.url 一档已取消：渲染进程可写的存储不能决定"下载哪个 exe 并静默安装"（方案 B2/S3）。
 export interface UpdateState {
   type: 'idle' | 'checking' | 'latest' | 'available' | 'downloading' | 'downloaded' | 'error'
   info?: string
@@ -23,16 +32,28 @@ function push(next: Partial<UpdateState>) {
   }
 }
 
+// 返回需要显式 setFeedURL 的地址；空串表示"用打包内置 app-update.yml，不做覆盖"。
+// env 覆盖必须过校验，不合规就回落到内置源（方案 B2/S3）
 function resolveFeedUrl(): string {
   const envUrl = process.env.MYWINAPP_UPDATE_URL
-  if (envUrl) return envUrl
+  const builtinUrl = app.isPackaged ? readBuiltinFeedUrl(process.resourcesPath) : ''
+  // 没有 env 覆盖时返回空串：electron-updater 自己会读打包内置的 app-update.yml
+  if (!envUrl) return ''
+  const chosen = pickFeedUrl(envUrl, builtinUrl)
+  const allowList = [
+    ...parseHostList(process.env.MYWINAPP_UPDATE_HOSTS),
+    ...(hostOf(builtinUrl) ? [hostOf(builtinUrl)] : [])
+  ]
   try {
-    const fromSettings = getSetting('update.url')
-    if (fromSettings) return fromSettings
-  } catch {
-    // settings 存储不可用时静默跳过该级（design 风险项）
+    assertSafeFeedUrl(chosen, allowList)
+  } catch (error) {
+    logWarn(
+      `忽略不安全的更新源并回落内置地址: ${(error as Error).message}` +
+        `（额外允许主机: ${allowList.join(', ') || '仅回环'}）`
+    )
+    return ''
   }
-  return '' // 空 = 使用打包内置 app-update.yml 的默认地址
+  return chosen
 }
 
 function wireEvents() {
@@ -57,7 +78,7 @@ export function initUpdater(logger: (msg: string) => void): void {
   state.feedUrl = resolveFeedUrl()
   if (state.feedUrl) {
     autoUpdater.setFeedURL({ provider: 'generic', url: state.feedUrl })
-    log(`更新源（运行时覆盖）: ${state.feedUrl}`)
+    log(`更新源（运行时覆盖）: ${redactUrl(state.feedUrl)}`)
   }
 
   autoUpdater.autoDownload = true
