@@ -24,13 +24,15 @@
 │   │   ├── workspace/      #   工作目录解析（默认 D:\MyWinApp，env 覆盖，回落 userData，不可写则抛错）
 │   │   ├── db/             #   node:sqlite 数据库单例与 settings 键值表（data/app.db，WAL）
 │   │   ├── updater/        #   electron-updater 自动更新（两级更新源 + 源校验、状态机、事件推送）
-│   │   └── ipc/            #   ipcMain.handle 处理器（appHandlers / fileHandlers /
-│   │                       #   workspaceHandlers / settingsHandlers / updateHandlers）
+│   │   └── ipc/            #   ipcSafe.ts（统一注册 + IpcResult 包装）与处理器
+│   │                       #   （appHandlers / fileHandlers / workspaceHandlers /
+│   │                       #   settingsHandlers / updateHandlers）
 │   ├── view/               # Vue 3 渲染进程（Vite root）
 │   │   ├── index.html
 │   │   └── src/
 │   │       ├── components/ #   公共组件与文件渲染器（renderers/）
 │   │       ├── services/   #   文件渲染/解压服务（Zip / Rar / Text / Image）
+│   │       ├── utils/      #   index.ts（格式化）+ path.ts（双分隔符路径/扩展名解析）
 │   │       ├── views/      #   页面（Files / Settings / About 已注册路由；Home 文件保留）
 │   │       ├── store/      #   Pinia
 │   │       ├── router/     #   Vue Router
@@ -38,7 +40,7 @@
 │   │       └── main.ts
 │   └── shared/             # 主/渲染进程共享代码（别名 @shared）
 │       ├── constants/      #   常量（仅 index.ts，单一来源）
-│       └── types/          #   共享类型（electron.d.ts，含 ElectronAPI 完整定义）
+│       └── types/          #   共享类型（electron.d.ts：ElectronAPI + IpcResult<T> 单一来源）
 ├── test-main.js            # 冒烟测试（npm run electron:test，自动退出）
 ├── tests/                  # node --test 单元测试（npm run test，纯函数用例：zipSlip 等）
 ├── scripts/
@@ -62,8 +64,10 @@
    `dist/main/main/`、`src/shared` 产物落在 `dist/main/shared/`，源码中的相对导入
    （如 ipc 里的 `../../shared/constants`）在产物中原样成立，无需任何后处理脚本。
 2. **类型单一来源**：`window.electronAPI` 的类型唯一声明在 `src/shared/types/electron.d.ts`
-   的 `ElectronAPI` 接口；preload 实现该接口，渲染进程通过
+   的 `ElectronAPI` 接口；所有 invoke 通道返回 `IpcResult<T>`（`{ok,data}` | `{ok:false,error}`），
+   由主进程 `ipcSafe()` 注册产出，handler 只 return/throw。preload 实现该接口，渲染进程通过
    `src/view/src/types/electron.d.ts` 做全局 Window 增强。新增 IPC 通道时三处同步修改。
+   事件订阅（onFileOpened/onUpdateStatus）返回退订函数，渲染层 onUnmounted 调用。
 3. **常量单一来源**：`src/shared/constants/index.ts` 是唯一版本，禁止再放置编译产物。
 4. **dev 热更新**：`npm run electron:dev` 通过 cross-env 注入
    `VITE_DEV_SERVER_URL=http://localhost:5180`，Electron 加载 Vite 开发服务器。

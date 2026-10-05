@@ -39,6 +39,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
+import { extname } from '@/utils/path'
 import TextFileRenderer from './renderers/TextFileRenderer.vue'
 import ImageFileRenderer from './renderers/ImageFileRenderer.vue'
 import ZipFileRenderer from './renderers/ZipFileRenderer.vue'
@@ -62,18 +63,16 @@ export default defineComponent({
   },
   emits: ['contentLoaded', 'imageLoaded'],
   setup(props, { emit }) {
-    // 判断是否为文本文件
+    // 判断是否为文本文件（扩展名解析走 utils/path，兼容两种分隔符，方案 B3/R6）
     const isTextFile = (filename: string): boolean => {
       const textExtensions = ['.txt', '.md', '.json', '.xml', '.html', '.css', '.js', '.ts', '.vue', '.scss', '.sass', '.less']
-      const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'))
-      return textExtensions.includes(ext)
+      return textExtensions.includes(extname(filename))
     }
 
     // 判断是否为图片文件
     const isImageFile = (filename: string): boolean => {
       const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg']
-      const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'))
-      return imageExtensions.includes(ext)
+      return imageExtensions.includes(extname(filename))
     }
 
     // 判断是否为ZIP文件

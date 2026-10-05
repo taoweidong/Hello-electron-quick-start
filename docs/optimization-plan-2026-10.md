@@ -83,7 +83,7 @@
 - **内置源保留 `http://localhost:58132/update/`**：真实 https 域名仍是待决外部项；`assertSafeFeedUrl` 按决策允许 http 明文（本地/内网源），补偿控制为主机白名单（`MYWINAPP_UPDATE_HOSTS` ∪ 内置源主机 ∪ 回环）+ 拒绝 URL 内嵌凭据 + 日志脱敏 `redactUrl`。验收 ④ 的"改 https"部分随之搁置，其余照常通过。
 - **压缩包来源路径不做读限制**：路径只可能来自用户亲自拖入（`getPathForFile`）或 dialog 选定，前者解压时不校验来源、后者登记进允许集；解压目标一律 `assertPathAllowed(..., 'write')`。`win.ini` 越界拒绝与 junction/8.3 短名判定由 pathGuard 单测以真实路径覆盖（验收 ②⑤），`update.url` IPC 拒绝（验收 ③）由 `WRITABLE_KEYS` 白名单直接成立。
 
-### B3 IPC 契约统一（破坏性，一次性改完）
+### B3 IPC 契约统一（破坏性，一次性改完）（✅ 已实施 2026-10-05）
 
 对应发现：R4、R5、C1、C2、C3
 规模：约 12-15 文件（唯一无法切成小 commit 的批次，故排在行为变更之前、结构清理之后）
@@ -99,6 +99,12 @@
 同步面清单（**改一处必改三处**，AGENTS.md 的硬约定）：`src/main/preload.ts` + `src/main/ipc/*.ts` + `src/shared/types/electron.d.ts`。
 验收：① `type-check` 通过即证明所有调用点已随形状变更被迫改完（这是本项目唯一可靠的完整性证明，也是选择 `type-check` 而非运行时断言的原因）；② 手动跑一遍：拖 zip 解压、读文本/图片、保存文件、改主题、检查更新——五条主路径无 `undefined` 解构；③ `grep -rn "\.success" src/view` 结果为 0；④ `grep -rn "removeAllListeners" src` 只剩主进程内部；⑤ `electron:test` 通过。
 回滚：整批 revert（无落盘数据格式变更，SQLite `settings` 表结构未动）。降级方案：若单次 diff 不可接受，可先加 `settings:get2` 并行一个版本再切——默认不采用，因为并行期会掩盖漏改的调用点。
+
+实施记录（2026-10-05）：单 commit 交付（21 文件），23 个 invoke 通道全部改走 `ipcSafe`。验收全绿——① `type-check` 一次通过（编译器即完整性证明）；② 用一次性 Electron 脚本 `require` 真实主进程产物、在页面上下文经 preload 走完 14 项端到端核验（平台/系统信息、theme 读写、解压主路径 + 读回 + 授权根写入、更新状态、订阅退订、窗口最小化）含 4 条反向用例（`update.url` 写入被拒、`win.ini`/`C:\Windows` 读越界、hosts 写越界，均返回 `{ok:false,error:{code:"PathDeniedError"}}`）；③④ grep 通过（`src/view` 里仅剩 `ElMessage.success` 与 el-tag 的 `'success'` 字面量，无 IPC `.success` 判定；`removeAllListeners` 在 `src` 中只剩注释里的两处说明性提及，API 面已下架）；⑤ `electron:test` / `test`（23 条）/ `eslint .` / `build` 全绿。两点实施细节：
+
+- **`error.code` 取 `Error.name`，其次 Node `errno`**：`PathDeniedError` / `UnsafeFeedUrlError` / `TypeError` / `ENOENT` 等可直接机器判别；ipcSafe 同时把 `通道名 + message` 写 `app.log` WARN，解决 §5.6"缺上下文"问题。
+- **死岛渲染器（`services/*Renderer*.ts`）不并入 IPC 形状**：其 `render()` 是渲染层内部抽象（P2-1 清理对象），只在调用 `readFile` 的边界处把 `IpcResult` 转回 `{success,content}`，避免为一个待删孤岛扩大本轮 diff。`FileExtractor` 抽象则直接改用 `IpcResult<ExtractedFileInfo[]>`（它是活的）。
+- **R6 同批修掉**：新增 `src/view/src/utils/path.ts`（`baseName`/`parentDir`/`extname`，`\` 与 `/` 同等处理），`FilesView` 的父目录查找与扩展名判定、`FileRenderer.vue` 的类型判定改用它——原先 `lastIndexOf('/')` 在 Windows 解压路径上恒不命中、`substring(lastIndexOf('.'))` 在无点号目录名上会返回整段。
 
 ### B4 工程化必修
 

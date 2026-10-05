@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { logWarn } from '../logger'
+import type { UpdateStatusInfo } from '../../shared/types/electron'
 import {
   assertSafeFeedUrl,
   hostOf,
@@ -13,19 +14,12 @@ import {
 // 自动更新：generic provider，两级更新源（env MYWINAPP_UPDATE_URL > 打包内置 app-update.yml），
 // 状态机归一化后经 update:status 事件推送（见 openspec specs/auto-update 与 design D2-D4）。
 // settings 表 update.url 一档已取消：渲染进程可写的存储不能决定"下载哪个 exe 并静默安装"（方案 B2/S3）。
-export interface UpdateState {
-  type: 'idle' | 'checking' | 'latest' | 'available' | 'downloading' | 'downloaded' | 'error'
-  info?: string
-  percent?: number
-  error?: string
-  version: string
-  feedUrl: string
-}
+// UpdateStatusInfo 唯一定义在共享类型（方案 B3/C3），此处仅 type-only 复用。
 
-let state: UpdateState = { type: 'idle', version: app.getVersion(), feedUrl: '' }
+let state: UpdateStatusInfo = { type: 'idle', version: app.getVersion(), feedUrl: '' }
 let log: (msg: string) => void = () => {}
 
-function push(next: Partial<UpdateState>) {
+function push(next: Partial<UpdateStatusInfo>) {
   state = { ...state, ...next }
   for (const win of BrowserWindow.getAllWindows()) {
     win.webContents.send('update:status', state)
@@ -95,11 +89,11 @@ export function initUpdater(logger: (msg: string) => void): void {
   }
 }
 
-export function getStatus(): UpdateState {
+export function getStatus(): UpdateStatusInfo {
   return { ...state }
 }
 
-export async function checkForUpdates(): Promise<UpdateState> {
+export async function checkForUpdates(): Promise<UpdateStatusInfo> {
   try {
     await autoUpdater.checkForUpdates()
   } catch (err: any) {

@@ -29,11 +29,11 @@ export default defineComponent({
     const loadFileContent = async () => {
       try {
         const result = await window.electronAPI.readFile(props.file.path)
-        if (result.success) {
-          fileContent.value = result.content || ''
+        if (result.ok) {
+          fileContent.value = result.data
           emit('contentLoaded', fileContent.value)
         } else {
-          fileContent.value = `读取文件失败: ${result.error}`
+          fileContent.value = `读取文件失败: ${result.error.message}`
         }
       } catch (error: any) {
         fileContent.value = `读取文件失败: ${error.message}`

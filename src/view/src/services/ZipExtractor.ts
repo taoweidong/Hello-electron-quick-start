@@ -1,4 +1,5 @@
 import { FileExtractor } from './FileExtractor'
+import type { IpcResult, ExtractedFileInfo } from '@shared/types/electron'
 
 /**
  * ZIP文件解压器
@@ -6,21 +7,12 @@ import { FileExtractor } from './FileExtractor'
  */
 export class ZipExtractor extends FileExtractor {
   /**
-   * 解压ZIP文件
+   * 解压ZIP文件（主进程 ipcSafe 已把失败收进返回值，此处直接透传）
    * @param filePath 压缩文件路径
    * @param extractPath 解压目标路径
    * @returns 解压结果Promise
    */
-  async extract(filePath: string, extractPath: string): Promise<{success: boolean, error?: string, files?: any[]}> {
-    try {
-      // 调用主进程的解压功能
-      const result = await window.electronAPI.extractZip(filePath, extractPath)
-      return result
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || '解压ZIP文件时发生错误'
-      }
-    }
+  extract(filePath: string, extractPath: string): Promise<IpcResult<ExtractedFileInfo[]>> {
+    return window.electronAPI.extractZip(filePath, extractPath)
   }
 }

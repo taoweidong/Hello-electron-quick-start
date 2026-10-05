@@ -62,14 +62,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { UpdateStatusInfo, WorkspaceInfo } from '@shared/types/electron'
+import type { UpdateStatusInfo, WorkspaceInfo, Unsubscribe } from '@shared/types/electron'
 
 const workspace = ref<WorkspaceInfo | null>(null)
 const theme = ref('light')
 const saving = ref(false)
 const updateStatus = ref<UpdateStatusInfo | null>(null)
+let offUpdateStatus: Unsubscribe | null = null
 
 const updateStatusText = computed(() => {
   const s = updateStatus.value
@@ -92,37 +93,45 @@ const updateStatusText = computed(() => {
 })
 
 onMounted(async () => {
-  try {
-    workspace.value = await window.electronAPI.getWorkspace()
-  } catch (error) {
-    console.warn('获取工作目录失败:', error)
+  const ws = await window.electronAPI.getWorkspace()
+  if (ws.ok) {
+    workspace.value = ws.data
+  } else {
+    console.warn('获取工作目录失败:', ws.error.message)
   }
 
-  try {
-    const saved = await window.electronAPI.getSetting('theme')
-    if (saved) theme.value = saved
-  } catch (error) {
-    console.warn('读取主题配置失败:', error)
+  const saved = await window.electronAPI.getSetting('theme')
+  if (saved.ok && saved.data) {
+    theme.value = saved.data
+  } else if (!saved.ok) {
+    console.warn('读取主题配置失败:', saved.error.message)
   }
 
-  try {
-    updateStatus.value = await window.electronAPI.getUpdateStatus()
-  } catch (error) {
-    console.warn('获取更新状态失败:', error)
+  const status = await window.electronAPI.getUpdateStatus()
+  if (status.ok) {
+    updateStatus.value = status.data
+  } else {
+    console.warn('获取更新状态失败:', status.error.message)
   }
-  window.electronAPI.onUpdateStatus(status => {
+  // 订阅返回退订函数，onUnmounted 精确移除（方案 B3/R5，防止路由来回切换叠加监听）
+  offUpdateStatus = window.electronAPI.onUpdateStatus(status => {
     updateStatus.value = status
   })
+})
+
+onUnmounted(() => {
+  offUpdateStatus?.()
+  offUpdateStatus = null
 })
 
 const saveTheme = async () => {
   saving.value = true
   try {
     const result = await window.electronAPI.setSetting('theme', theme.value)
-    if (result.success) {
+    if (result.ok) {
       ElMessage.success('已保存，应用重启后仍生效')
     } else {
-      ElMessage.error(result.error || '保存失败')
+      ElMessage.error(result.error.message || '保存失败')
     }
   } catch (error: any) {
     ElMessage.error(`保存失败: ${error.message}`)
@@ -132,10 +141,11 @@ const saveTheme = async () => {
 }
 
 const checkUpdate = async () => {
-  try {
-    updateStatus.value = await window.electronAPI.checkForUpdates()
-  } catch (error: any) {
-    ElMessage.error(`检查更新失败: ${error.message}`)
+  const result = await window.electronAPI.checkForUpdates()
+  if (result.ok) {
+    updateStatus.value = result.data
+  } else {
+    ElMessage.error(`检查更新失败: ${result.error.message}`)
   }
 }
 

@@ -1,13 +1,11 @@
 import { app } from 'electron'
 import { writeFileSync, rmSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import type { WorkspaceInfo } from '../../shared/types/electron'
 
 // 工作目录：默认 D:\MyWinApp，承载 logs / data / config 三个子目录；
 // 可用环境变量 MYWINAPP_WORKDIR 整体覆盖；不可用时回落到 userData（见 openspec specs/workspace-directory）
-export interface WorkspaceInfo {
-  path: string
-  fallback: boolean
-}
+// WorkspaceInfo 唯一定义在共享类型（方案 B3/C3），此处仅 type-only 复用（主进程相对导入合规）
 
 const SUBDIRS = ['logs', 'data', 'config'] as const
 

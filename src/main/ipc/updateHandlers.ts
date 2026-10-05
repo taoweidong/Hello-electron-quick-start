@@ -1,15 +1,15 @@
-import { ipcMain } from 'electron'
 import { checkForUpdates, getStatus, installNow } from '../updater'
+import { ipcSafe } from './ipcSafe'
 
 // 自动更新通道（见 openspec specs/auto-update）
-ipcMain.handle('update:check', () => {
+ipcSafe('update:check', async () => {
   return checkForUpdates()
 })
 
-ipcMain.handle('update:install', () => {
+ipcSafe('update:install', () => {
   installNow()
 })
 
-ipcMain.handle('update:get-status', () => {
+ipcSafe('update:get-status', () => {
   return getStatus()
 })

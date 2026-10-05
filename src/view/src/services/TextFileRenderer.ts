@@ -12,8 +12,11 @@ export class TextFileRenderer extends FileRenderer {
    */
   async render(filePath: string): Promise<{success: boolean, content?: string, error?: string}> {
     try {
+      // IPC 契约是 IpcResult（方案 B3），此岛内抽象沿用 {success,content}，在边界处转换
       const result = await window.electronAPI.readFile(filePath)
-      return result
+      return result.ok
+        ? { success: true, content: result.data }
+        : { success: false, error: result.error.message }
     } catch (error: any) {
       return {
         success: false,

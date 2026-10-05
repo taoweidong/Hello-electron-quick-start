@@ -1,15 +1,19 @@
-import { ipcMain, dialog, BrowserWindow, app } from 'electron'
+import { dialog, BrowserWindow, app } from 'electron'
 import { cpus } from 'node:os'
 import { dirname } from 'node:path'
 import { APP_CONSTANTS } from '../../shared/constants'
 import { grantReadDir, grantWriteDir } from '../security/pathGuard'
+import { ipcSafe } from './ipcSafe'
+import type { OpenDialogOptions, SaveDialogOptions } from '../../shared/types/electron'
+
+// 应用/对话框/窗口通道（B3 起统一走 ipcSafe：抛错即 {ok:false,error}，返回值即 {ok:true,data}）
 
 // 对话框处理：用户亲自选定的路径是合法授权来源，成功分支里登记进 pathGuard（方案 B2/S2）
-ipcMain.handle('dialog:openFile', async (event, options) => {
+ipcSafe('dialog:openFile', async (event, options: OpenDialogOptions = {}) => {
   const win = BrowserWindow.fromWebContents(event.sender)
-  if (!win) return { canceled: true, filePaths: [] }
+  if (!win) throw new Error('找不到发起请求的窗口')
 
-  const properties = options?.properties || []
+  const properties = options.properties ?? []
   const result = await dialog.showOpenDialog(win, {
     ...options,
     properties: ['openFile', ...properties]
@@ -25,9 +29,9 @@ ipcMain.handle('dialog:openFile', async (event, options) => {
   return result
 })
 
-ipcMain.handle('dialog:saveFile', async (event, options) => {
+ipcSafe('dialog:saveFile', async (event, options: SaveDialogOptions = {}) => {
   const win = BrowserWindow.fromWebContents(event.sender)
-  if (!win) return { canceled: true, filePath: '' }
+  if (!win) throw new Error('找不到发起请求的窗口')
 
   const result = await dialog.showSaveDialog(win, options)
   if (!result.canceled && result.filePath) {
@@ -37,19 +41,19 @@ ipcMain.handle('dialog:saveFile', async (event, options) => {
 })
 
 // 应用信息
-ipcMain.handle('app:getVersion', () => {
+ipcSafe('app:getVersion', () => {
   return app.getVersion()
 })
 
-ipcMain.handle('app:getPath', (event, name: Parameters<typeof app.getPath>[0]) => {
+ipcSafe('app:getPath', (event, name: Parameters<typeof app.getPath>[0]) => {
   return app.getPath(name)
 })
 
-ipcMain.handle('app:getPlatform', () => {
+ipcSafe('app:getPlatform', () => {
   return process.platform
 })
 
-ipcMain.handle('app:getInfo', () => {
+ipcSafe('app:getInfo', () => {
   return {
     version: app.getVersion(),
     name: APP_CONSTANTS.APP_NAME,
@@ -57,7 +61,7 @@ ipcMain.handle('app:getInfo', () => {
   }
 })
 
-ipcMain.handle('app:getSystemInfo', () => {
+ipcSafe('app:getSystemInfo', () => {
   return {
     platform: process.platform,
     arch: process.arch,
@@ -67,7 +71,7 @@ ipcMain.handle('app:getSystemInfo', () => {
   }
 })
 
-ipcMain.handle('app:getPerformanceInfo', () => {
+ipcSafe('app:getPerformanceInfo', () => {
   const memory = process.memoryUsage()
   return {
     usedMemory: memory.heapUsed,
@@ -77,21 +81,24 @@ ipcMain.handle('app:getPerformanceInfo', () => {
 })
 
 // 窗口操作
-ipcMain.handle('window:minimize', (event) => {
+ipcSafe('window:minimize', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender)
-  win?.minimize()
+  if (!win) throw new Error('找不到发起请求的窗口')
+  win.minimize()
 })
 
-ipcMain.handle('window:maximize', (event) => {
+ipcSafe('window:maximize', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender)
-  if (win?.isMaximized()) {
+  if (!win) throw new Error('找不到发起请求的窗口')
+  if (win.isMaximized()) {
     win.unmaximize()
   } else {
-    win?.maximize()
+    win.maximize()
   }
 })
 
-ipcMain.handle('window:close', (event) => {
+ipcSafe('window:close', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender)
-  win?.close()
+  if (!win) throw new Error('找不到发起请求的窗口')
+  win.close()
 })

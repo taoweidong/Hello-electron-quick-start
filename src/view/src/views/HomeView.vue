@@ -97,29 +97,28 @@ const memoryPercent = computed(() => {
 
 const handleOpenFile = async () => {
   if (window.electronAPI) {
-    try {
-      const result = await window.electronAPI.showOpenDialog({
-        title: '选择文件',
-        properties: ['openFile'],
-        filters: [
-          { name: 'All Files', extensions: ['*'] },
-          { name: 'Text Files', extensions: ['txt', 'md'] },
-          { name: 'Image Files', extensions: ['jpg', 'png', 'gif'] }
-        ]
-      })
+    const result = await window.electronAPI.showOpenDialog({
+      title: '选择文件',
+      properties: ['openFile'],
+      filters: [
+        { name: 'All Files', extensions: ['*'] },
+        { name: 'Text Files', extensions: ['txt', 'md'] },
+        { name: 'Image Files', extensions: ['jpg', 'png', 'gif'] }
+      ]
+    })
+    if (!result.ok) {
+      ElMessage.error(`打开文件对话框失败: ${result.error.message}`)
+      return
+    }
 
-      if (!result.canceled && result.filePaths.length > 0) {
-        ElMessage.success(`已选择文件: ${result.filePaths[0]}`)
+    if (!result.data.canceled && result.data.filePaths.length > 0) {
+      ElMessage.success(`已选择文件: ${result.data.filePaths[0]}`)
 
-        // 读取文件内容示例
-        const fileResult = await window.electronAPI.readFile(result.filePaths[0])
-        if (fileResult.success) {
-          console.log('文件内容:', fileResult.content?.substring(0, 100))
-        }
+      // 读取文件内容示例
+      const fileResult = await window.electronAPI.readFile(result.data.filePaths[0])
+      if (fileResult.ok) {
+        console.log('文件内容:', fileResult.data.substring(0, 100))
       }
-    } catch (error) {
-      ElMessage.error('打开文件对话框失败')
-      console.error('File open error:', error)
     }
   } else {
     ElMessage.info('在浏览器环境中无法调用文件对话框')
@@ -133,7 +132,7 @@ const handleShowDialog = () => {
 const handleGetPlatform = async () => {
   if (window.electronAPI) {
     const platform = await window.electronAPI.getPlatform()
-    ElMessage.info(`当前平台: ${platform}`)
+    ElMessage.info(`当前平台: ${platform.ok ? platform.data : navigator.platform}`)
   } else {
     ElMessage.info(`当前平台: ${navigator.platform}`)
   }
@@ -149,8 +148,10 @@ const formatMemory = (bytes: number): string => {
 
 const updatePerformanceInfo = () => {
   if (window.electronAPI) {
-    window.electronAPI.getPerformanceInfo().then((info) => {
-      performanceInfo.value = info
+    window.electronAPI.getPerformanceInfo().then((result) => {
+      if (result.ok) {
+        performanceInfo.value = result.data
+      }
     }).catch((error: any) => {
       console.warn('无法获取性能信息:', error)
     })
@@ -160,27 +161,21 @@ const updatePerformanceInfo = () => {
 onMounted(async () => {
   if (window.electronAPI) {
     // 获取完整的应用信息
-    try {
-      const appData = await window.electronAPI.getAppInfo()
-      appInfo.value = appData
-    } catch (error) {
-      console.warn('无法获取应用信息:', error)
+    const appData = await window.electronAPI.getAppInfo()
+    if (appData.ok) {
+      appInfo.value = appData.data
     }
 
     // 获取系统信息
-    try {
-      const sysInfo = await window.electronAPI.getSystemInfo()
-      systemInfo.value = sysInfo
-    } catch (error) {
-      console.warn('无法获取系统信息:', error)
+    const sysInfo = await window.electronAPI.getSystemInfo()
+    if (sysInfo.ok) {
+      systemInfo.value = sysInfo.data
     }
 
     // 获取性能信息
-    try {
-      const perfInfo = await window.electronAPI.getPerformanceInfo()
-      performanceInfo.value = perfInfo
-    } catch (error) {
-      console.warn('无法获取性能信息:', error)
+    const perfInfo = await window.electronAPI.getPerformanceInfo()
+    if (perfInfo.ok) {
+      performanceInfo.value = perfInfo.data
     }
   }
 

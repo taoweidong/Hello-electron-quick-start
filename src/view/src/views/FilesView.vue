@@ -92,6 +92,8 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { formatFileSize, formatTime } from '@/utils'
+import { extname, parentDir } from '@/utils/path'
+import type { ExtractedFileInfo } from '@shared/types/electron'
 import { FileExtractorFactory } from '@/services/FileExtractorFactory'
 import FileRenderer from '@/components/FileRenderer.vue'
 
@@ -148,22 +150,19 @@ const isDirectory = (filename: string): boolean => {
 // 判断是否为文本文件
 const isTextFile = (filename: string): boolean => {
   const textExtensions = ['.txt', '.md', '.json', '.xml', '.html', '.css', '.js', '.ts', '.vue', '.scss', '.sass', '.less']
-  const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'))
-  return textExtensions.includes(ext)
+  return textExtensions.includes(extname(filename))
 }
 
 // 判断是否为图片文件
 const isImageFile = (filename: string): boolean => {
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg']
-  const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'))
-  return imageExtensions.includes(ext)
+  return imageExtensions.includes(extname(filename))
 }
 
 // 判断是否为压缩文件
 const isArchiveFile = (filename: string): boolean => {
   const archiveExtensions = ['.zip', '.rar', '.7z', '.tar', '.gz']
-  const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'))
-  return archiveExtensions.includes(ext)
+  return archiveExtensions.includes(extname(filename))
 }
 
 // 判断是否为ZIP文件
@@ -215,8 +214,8 @@ const handleDrop = async (event: DragEvent) => {
   }
   
   try {
-    // 获取文件扩展名
-    const extension = fileName.substring(fileName.lastIndexOf('.'))
+    // 获取文件扩展名（扩展名解析统一走 utils/path，兼容两种分隔符，方案 B3/R6）
+    const extension = extname(fileName)
     
     // 使用工厂模式创建对应的解压器
     const extractor = FileExtractorFactory.createExtractor(extension)
@@ -227,19 +226,23 @@ const handleDrop = async (event: DragEvent) => {
     }
     
     // 创建临时目录用于解压
-    const userDataPath = await window.electronAPI.getAppPath('userData')
-    const extractPath = `${userDataPath}/extracted/${Date.now()}`
+    const userDataResult = await window.electronAPI.getAppPath('userData')
+    if (!userDataResult.ok) {
+      ElMessage.error(`获取解压目录失败: ${userDataResult.error.message}`)
+      return
+    }
+    const extractPath = `${userDataResult.data}/extracted/${Date.now()}`
 
     // 调用解压器解压文件（Electron 32+ 移除 File.path，经 webUtils 获取真实路径）
     const filePath = window.electronAPI.getPathForFile(file)
     const result = await extractor.extract(filePath, extractPath)
     
-    if (result.success) {
+    if (result.ok) {
       // 构建文件树结构
-      buildFileTree(extractPath, result.files || [])
+      buildFileTree(extractPath, result.data)
       ElMessage.success('文件解压成功')
     } else {
-      ElMessage.error(`解压失败: ${result.error}`)
+      ElMessage.error(`解压失败: ${result.error.message}`)
     }
   } catch (error: any) {
     ElMessage.error(`操作失败: ${error.message}`)
@@ -247,7 +250,7 @@ const handleDrop = async (event: DragEvent) => {
 }
 
 // 构建文件树结构
-const buildFileTree = (basePath: string, files: any[]) => {
+const buildFileTree = (basePath: string, files: ExtractedFileInfo[]) => {
   const root: any = {
     name: '解压文件',
     path: basePath,
@@ -286,8 +289,8 @@ const buildFileTree = (basePath: string, files: any[]) => {
       modified: new Date()
     }
     
-    // 查找父目录
-    const parentPath = file.path.substring(0, file.path.lastIndexOf('/'))
+    // 查找父目录（Windows 下解压路径用反斜杠拼接，必须走双分隔符解析，方案 B3/R6）
+    const parentPath = parentDir(file.path)
     const parent = pathMap.get(parentPath) || root
     parent.children.push(node)
   })
