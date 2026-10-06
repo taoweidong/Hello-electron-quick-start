@@ -1,0 +1,16 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Windows 双击入口必须是 CRLF，否则 cmd 解析异常；仓库其余文件按 LF 存储（core.autocrlf=true 负责检出转换）
+[*.bat]
+end_of_line = crlf
+
+[*.md]
+trim_trailing_whitespace = false

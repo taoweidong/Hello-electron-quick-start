@@ -4,6 +4,9 @@
 
 ```
 .
+├── .editorconfig           # 编辑器约定（UTF-8 / LF / 2 空格 / 末行换行；`*.bat` 例外保 CRLF）
+├── .nvmrc                  # 本地 Node 主版本（24，与 package.json engines 一致）
+├── CHANGELOG.md            # 变更归档（人工整理，不参与构建；版本号唯一来源仍是 package.json）
 ├── build/
 │   └── icons/              # 应用图标（icon.ico / icon.icns / icon.png）
 ├── dist/                   # 构建输出（gitignore）
@@ -33,7 +36,7 @@
 │   │   ├── index.html
 │   │   └── src/
 │   │       ├── components/ #   FileRenderer.vue（按类型分发）+ renderers/（Text/Image/Zip/Rar/Unsupported）
-│   │       ├── composables/#   useFileTree.ts（树状态）、useArchiveDrop.ts（拖放解压，方案 P2-5）
+│   │       ├── composables/#   useFileTree.ts（树状态）、useArchiveDrop.ts（解压入口：拖放 + 点击/键盘选择，方案 P2-5/P3-4）
 │   │       ├── services/   #   解压器（FileExtractor 接口 + Zip/Rar 实现 + 工厂）——渲染器死岛已删
 │   │       ├── styles/     #   index.scss（滚动条/动画/工具类；颜色一律 --el-*，无自定义变量块）
 │   │       ├── utils/      #   index.ts（格式化）+ path.ts（双分隔符路径/扩展名解析）

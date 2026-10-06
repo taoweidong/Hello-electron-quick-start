@@ -4,17 +4,27 @@
       <!-- 左侧文件树 -->
       <el-col :span="8" class="file-tree-panel">
         <div class="panel-header">
-          <h2>文件结构</h2>
+          <h2 id="file-tree-title">文件结构</h2>
         </div>
-        <div class="drop-zone" :class="{ 'is-extracting': extracting }" @drop="handleDrop" @dragover="handleDragOver">
-          <div v-if="extracting" class="extracting-hint">
+        <!-- 键盘可及入口（方案 P3-4）：拖放区是 group，选文件走真实 button + hidden input，
+             两条路在 useArchiveDrop 里合流到同一条解压链路 -->
+        <div
+          class="drop-zone"
+          :class="{ 'is-extracting': extracting }"
+          role="group"
+          aria-labelledby="file-tree-title"
+          :aria-busy="extracting"
+          @drop="handleDrop"
+          @dragover="handleDragOver"
+        >
+          <div v-if="extracting" class="extracting-hint" role="status">
             <el-icon class="is-loading" :size="48"><Loading /></el-icon>
             <div>正在解压，请稍候…（解压期间忽略新的拖放）</div>
           </div>
-          <el-text type="info" v-else-if="!fileTree.length">
+          <button v-else-if="!fileTree.length" type="button" class="pick-archive-button" @click="pickArchive">
             <el-icon><Upload /></el-icon>
-            <div>拖拽 ZIP 或 RAR 文件到此处上传</div>
-          </el-text>
+            <span class="pick-archive-text">拖拽 ZIP 或 RAR 文件到此处上传，或点击选择压缩包</span>
+          </button>
           <div v-else>
             <el-tree
               :data="fileTree"
@@ -25,7 +35,7 @@
             >
               <template #default="{ node, data }">
                 <div class="file-tree-node">
-                  <el-icon class="file-icon">
+                  <el-icon class="file-icon" aria-hidden="true">
                     <component :is="getFileIcon(data)" />
                   </el-icon>
                   <span class="file-label">{{ node.label }}</span>
@@ -33,13 +43,23 @@
               </template>
             </el-tree>
           </div>
+          <!-- hidden 选择器放在条件链之外：插在 v-else-if 与 v-else 之间会打断链条（vue/valid-v-else） -->
+          <input
+            ref="archiveInput"
+            type="file"
+            class="archive-file-input"
+            accept=".zip,.rar"
+            tabindex="-1"
+            aria-hidden="true"
+            @change="handleFilePick"
+          />
         </div>
       </el-col>
       
       <!-- 右侧文件详情 -->
-      <el-col :span="16" class="file-details-panel">
+      <el-col :span="16" class="file-details-panel" role="region" aria-labelledby="file-details-title">
         <div class="panel-header">
-          <h2>文件详情</h2>
+          <h2 id="file-details-title">文件详情</h2>
         </div>
         
         <!-- 文件属性 -->
@@ -80,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import {
   Document,
   Folder,
@@ -97,7 +117,14 @@ import { useArchiveDrop } from '@/composables/useArchiveDrop'
 import FileRenderer from '@/components/FileRenderer.vue'
 
 const { fileTree, selectedFile, treeProps, showArchive, selectNode } = useFileTree()
-const { extracting, handleDragOver, handleDrop } = useArchiveDrop({ onExtracted: showArchive })
+const { extracting, handleDragOver, handleDrop, handleFilePick } = useArchiveDrop({ onExtracted: showArchive })
+
+// 键盘/点击选择压缩包的入口：按钮触发 hidden input，选中后与拖放共用 handleFilePick（方案 P3-4）
+const archiveInput = ref<HTMLInputElement | null>(null)
+
+const pickArchive = () => {
+  archiveInput.value?.click()
+}
 
 // 图标按节点判定：目录看 isDirectory，不再用"名字里有没有点"猜（方案 P2-5）
 const getFileIcon = (node: FileTreeNode) => {
@@ -193,19 +220,47 @@ const formatDate = (date?: Date): string => (date ? formatTime(date) : '-')
   font-size: 15px;
 }
 
-.drop-zone .el-text {
-  text-align: center;
-  font-size: 16px;
-}
-
 .drop-zone .el-icon {
   font-size: 48px;
   margin-bottom: 16px;
   color: var(--el-text-color-disabled);
 }
 
+/* 树节点图标只有 16px：`.drop-zone .el-icon` 是后代选择器，权重更高，必须显式回压 */
+.file-tree-node .el-icon {
+  font-size: 16px;
+  margin-bottom: 0;
+}
+
 .drop-zone > div {
   width: 100%;
+}
+
+.pick-archive-button {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 16px;
+  color: var(--el-text-color-regular);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pick-archive-button:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+
+/* 选择器本身不展示（按钮才是可见入口），但保留在 DOM 里供 .click() 唤起原生文件对话框 */
+.archive-file-input {
+  display: none;
 }
 
 .file-tree-node {

@@ -13,26 +13,16 @@ export interface ArchiveDropOptions {
 /**
  * 拖放归档 → 解压 → 装树（方案 P2-5，从 FilesView 拆出）。
  * 解压期间拒绝新的拖放（方案 B4/R7）。
+ * 拖放与键盘/点击选择（hidden input）共用同一条链路，见 `extractArchive`（方案 P3-4）。
  */
 export function useArchiveDrop({ onExtracted }: ArchiveDropOptions) {
   const extracting = ref(false)
 
-  function handleDragOver(event: DragEvent): void {
-    event.preventDefault()
-  }
-
-  async function handleDrop(event: DragEvent): Promise<void> {
-    event.preventDefault()
-
+  async function extractArchive(file: File): Promise<void> {
     if (extracting.value) {
       ElMessage.info('正在解压中，请等待当前操作完成')
       return
     }
-
-    const dropped = event.dataTransfer?.files
-    if (!dropped || dropped.length === 0) return
-    const file = dropped[0]
-    if (!file) return
 
     if (!isExtractableArchive(file.name)) {
       ElMessage.warning('请上传 ZIP 或 RAR 文件')
@@ -56,7 +46,7 @@ export function useArchiveDrop({ onExtracted }: ArchiveDropOptions) {
 
       extracting.value = true
       try {
-        // Electron 32+ 移除 File.path，真实路径经 preload 的 webUtils 获取
+        // Electron 32+ 移除 File.path，真实路径经 preload 的 webUtils 获取（拖放与 input 选择同一条通道）
         const result = await extractor.extract(window.electronAPI.getPathForFile(file), extractPath)
         if (!result.ok) {
           ElMessage.error(`解压失败: ${result.error.message}`)
@@ -77,5 +67,28 @@ export function useArchiveDrop({ onExtracted }: ArchiveDropOptions) {
     }
   }
 
-  return { extracting, handleDragOver, handleDrop }
+  function handleDragOver(event: DragEvent): void {
+    event.preventDefault()
+  }
+
+  function handleDrop(event: DragEvent): void {
+    event.preventDefault()
+
+    const file = event.dataTransfer?.files[0]
+    if (!file) return
+
+    void extractArchive(file)
+  }
+
+  function handleFilePick(event: Event): void {
+    const input = event.target as HTMLInputElement
+    const file = input.files?.[0]
+    // 先清空 value：再次选中同一个文件也要能触发 change
+    input.value = ''
+    if (!file) return
+
+    void extractArchive(file)
+  }
+
+  return { extracting, handleDragOver, handleDrop, handleFilePick }
 }
