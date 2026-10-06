@@ -44,6 +44,7 @@ npm run build            # 类型检查 + 主进程编译 + Vite 构建 + electr
 npm run build:prod       # 产出 NSIS 安装包 + portable（含 latest.yml / blockmap）
 npm run build:portable   # 仅便携版
 npm run build:single     # 一键打包单一 EXE（构建 + 产物核验 + 路径/哈希回显；或双击仓库根"一键打包.bat"）
+npm run release:collect  # 发布级全套：NSIS + portable + 三件套对账核验 + 归集（不上传；或双击 scripts\一键打包-Windows.bat）
 npm run test             # 单元测试：tsc 预编译 tests/ 到 dist-test/ 后 node --test（纯函数直测）
 npm run electron:test    # 冒烟测试：加载构建产物并自动退出（需先 build）
 npm run clean            # 清理 dist / release / *.tsbuildinfo

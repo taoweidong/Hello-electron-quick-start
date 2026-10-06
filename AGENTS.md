@@ -13,6 +13,7 @@ Electron 44 + Vue 3.5 + TypeScript 6 + Vite 8 + Element Plus 桌面应用，面�
 - `npm run build:prod` — `build:core` + 产出 NSIS 安装包（--publish=never）
 - `npm run build:portable` — `build:core` + 产出 Windows 便携版 exe
 - `npm run build:single` — 一键打包单一 EXE：复用构建链 + 产物核验（存在/体积/版本一致性/sha512）+ 结果回显；`node scripts/pack-single.js --verify-only` 仅复检既有产物；仓库根 `一键打包.bat` 为双击入口
+- `npm run release:collect` — 发布级全套（`build:prod` → 三件套对账核验 → 归集 `dist-release/<版本>/`，`--no-upload` 不触网、不需凭据）；`scripts/一键打包-Windows.bat` 是它的双击入口（薄壳，只做前置检查 + 镜像默认值 + 同一份 `release.js`，不要另写一套打包逻辑）
 - `npm run electron:test` — 冒烟测试：加载构建产物并自动退出（exit 0 成功 / 1 失败），需先 `npm run build`
 - `npm run test` — 单元测试：`tsc -p tsconfig.test.json` 预编译 `tests/` 到 `dist-test/`（根包是 CommonJS，Node 不能直跑 `.ts`），再 `node --test` 执行；`test:watch` 为监听模式。被测纯函数模块（如 `workspace/trySetup`、`security/archiveLimit`、`main/utils/path`、`view/utils/fileType`、`view/utils/fileTree`、`scripts/lib/release-utils`）**不得在顶层 import `electron`**，否则 `node --test` 无法加载；需要 fs 的函数以接口注入（trySetup 的 `SetupFs`）以便 fake 测试
 - `npm run clean` — 清理 dist / release / *.tsbuildinfo
@@ -43,4 +44,5 @@ Electron 44 + Vue 3.5 + TypeScript 6 + Vite 8 + Element Plus 桌面应用，面�
 - dev 端口固定 5180：vite.config.ts（strictPort）与 electron:dev 的 wait-on 都依赖它，不要改。
 - 打包配置在根目录 `electron-builder.json`（win: portable + nsis x64，输出 `release/`）。`files` 不含 node_modules——electron-builder 自动附带生产依赖，不要手动加回去。
 - 排查运行时问题先看工作目录下的 `logs/app.log`（默认 `D:\MyWinApp\logs\app.log`；工作目录不可用回落 `userData` 时在 `userData/logs/app.log`）。
+- **`.bat` 两条硬约束**（`scripts/一键打包-Windows.bat`、仓库根 `一键打包.bat`）：一是**必须 CRLF**（`.editorconfig` 的 `[*.bat]` 就是为此，LF 批处理在 cmd 下解析异常）；二是 **`chcp 65001` 下 `for /f` 块之后紧跟含多字节字符的行会解析错位**——实测症状是同一行内容单独 `echo` 正常、放进 `for ... do` 之后就报 `'e' is not recognized`（cmd 按字节定位 batch 偏移，多字节 + for 块组合触发）。所以 bat 里列产物用 `dir /b` 直出、不要套 `for /f`，版本闸门用 `node -e "..."` 判退出码而不是 `for /f` 回读字符串。
 - `docs/project-structure.md` 已与实际结构同步，改动结构时记得更新它。

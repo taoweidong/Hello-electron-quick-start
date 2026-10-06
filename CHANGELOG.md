@@ -11,6 +11,7 @@
 ### 新增
 
 - **一键打包单一 EXE**：`npm run build:single` 复用既有构建链，附产物核验（存在性 / 体积 / 版本一致性 / sha512）与结果回显，`--verify-only` 可只复检既有产物；`一键打包.bat` 是双击入口。
+- **发布级全套的双击入口**：`scripts/一键打包-Windows.bat` 薄壳调用同一份 `scripts/release.js --no-upload`（= `npm run release:collect`）——`build:prod` 出 NSIS 安装包 + portable → 三件套对账核验（版本三方一致 + 逐文件 sha512 实算对账）→ 归集 `dist-release/<版本>/`，不触网、不需凭据。前置检查（Node 存在且主版本 ≥ 24、依赖已装）与 electron 镜像默认值（`ELECTRON_MIRROR` / `ELECTRON_BUILDER_BINARIES_MIRROR`，已自行设置则不覆盖）在 bat 内完成；结束时用 `dir /b` 列出 `release\` 与 `dist-release\` 的真实清单，避免把"portable 已构建"误读成"portable 已归集"。
 - **发布流水线**：`npm run release` 一键完成 `build:prod` → 三件套对账核验（版本三方一致 + `latest.yml` 逐文件 sha512/base64 与本地实算对账）→ 归集 `dist-release/<版本>/` → HTTP PUT 上传 → 远端 `latest.yml` 逐字节 + HEAD 尺寸核对；`release:collect` 只核验归集不上传。凭据仅经环境变量 `RELEASE_UPLOAD_AUTH`，不落 argv、不入仓库。
 - **安全基线四道闸**（代码质量评审 B1/B2/B4 批次）：
   - `security/zipSlip.ts` 的 `safeJoin()` 断掉 zip-slip——条目名拒绝 `..` 越界、绝对/盘符/UNC/`\\?\`/`\\.\` 前缀、控制字符与 Windows 非法字符，反斜杠与 `/` 同等处理；越界即整包失败并落 WARN。

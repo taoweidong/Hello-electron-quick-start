@@ -58,6 +58,7 @@
 │   ├── clean.js            # 清理产物（npm run clean，Node 内置 rmSync，不引 rimraf）
 │   ├── pack-single.js      # 一键打包脚本（npm run build:single，含产物核验与回显）
 │   ├── release.js          # 发布流水线（npm run release：对账核验 + 归集 + PUT 上传 + 校验）
+│   ├── 一键打包-Windows.bat # 双击入口：调 release.js --no-upload（NSIS + portable + 归集核验，不触网）
 │   └── lib/
 │       └── release-utils.js # 发布/打包共用纯函数（parseLatestYml/sha512/PE 版本/版本比较，node --test 可直测）
 ├── release.config.json     # 发布配置（upload.url；凭据经 RELEASE_UPLOAD_AUTH 环境变量）
