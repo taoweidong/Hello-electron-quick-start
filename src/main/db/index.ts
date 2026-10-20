@@ -18,6 +18,25 @@ export function getDb(): DatabaseSync {
   db = new DatabaseSync(join(dir, 'app.db'))
   db.exec('PRAGMA journal_mode = WAL')
   db.exec('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+  // 任务 CRUD 示例表（schema 变更集中在本文件；demo_key 用于示例数据幂等补齐）
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      demo_key TEXT UNIQUE,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'todo',
+      priority TEXT NOT NULL DEFAULT 'medium',
+      category TEXT NOT NULL DEFAULT '通用',
+      tags TEXT NOT NULL DEFAULT '[]',
+      due_date TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_updated_at ON tasks(updated_at DESC)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)')
   return db
 }
 

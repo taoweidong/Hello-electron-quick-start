@@ -113,6 +113,82 @@ export interface UpdateStatusInfo {
   feedUrl: string
 }
 
+/** 任务状态（CRUD 示例的唯一状态枚举） */
+export type TaskStatus = 'todo' | 'in_progress' | 'done'
+
+/** 任务优先级（urgent 最高，用于排序与视觉强调） */
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
+
+/** 任务列表排序字段（主进程按白名单映射为 SQL，不接受任意列名） */
+export type TaskSortBy = 'updatedAt' | 'createdAt' | 'dueDate' | 'priority'
+
+/** 任务实体（IPC 传输使用 ISO 时间串，避免 Date 跨进程序列化歧义） */
+export interface Task {
+  id: number
+  title: string
+  description: string
+  status: TaskStatus
+  priority: TaskPriority
+  category: string
+  tags: string[]
+  /** YYYY-MM-DD；未设置截止日期为 null */
+  dueDate: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** 新建/更新任务的入参（字段全部必填，由表单补齐默认值，避免可选属性语义漂移） */
+export interface TaskInput {
+  title: string
+  description: string
+  status: TaskStatus
+  priority: TaskPriority
+  category: string
+  tags: string[]
+  dueDate: string | null
+}
+
+/** 任务列表查询（严格枚举 + 分页；渲染层每次发送完整对象） */
+export interface TaskQuery {
+  keyword: string
+  status: TaskStatus | 'all'
+  priority: TaskPriority | 'all'
+  /** 分类筛选；字符串 'all' 表示不筛选（分类是自由文本，不设枚举） */
+  category: string
+  sortBy: TaskSortBy
+  sortOrder: 'asc' | 'desc'
+  page: number
+  pageSize: number
+}
+
+/** 分页列表结果 */
+export interface TaskListResult {
+  items: Task[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+/** 概览统计（overdue 只统计未完成且截止日期早于今天） */
+export interface TaskStats {
+  total: number
+  todo: number
+  inProgress: number
+  done: number
+  overdue: number
+  completionRate: number
+}
+
+/** 示例数据填充结果（按 demo_key 幂等，只补缺失项） */
+export interface TaskSeedResult {
+  inserted: number
+}
+
+/** 删除结果（单条与批量共用） */
+export interface TaskDeleteResult {
+  deleted: number
+}
+
 /** 事件订阅的退订函数（方案 B3/R5：渲染层 onUnmounted 时调用，替代 removeAllListeners 核弹） */
 export type Unsubscribe = () => void
 
@@ -149,11 +225,23 @@ export interface ElectronAPI {
 
   // 事件监听：返回退订函数
   onFileOpened: (callback: (filePath: string) => void) => Unsubscribe
+  /** 原生菜单「新建任务」触发（Ctrl/Cmd+N），由应用壳导航到任务页并打开表单 */
+  onNewTaskRequested: (callback: () => void) => Unsubscribe
 
   // 工作目录与配置（SQLite 实例）
   getWorkspace: () => Promise<IpcResult<WorkspaceInfo>>
   getSetting: (key: string) => Promise<IpcResult<string | null>>
   setSetting: (key: string, value: string) => Promise<IpcResult<void>>
+
+  // 任务 CRUD（SQLite tasks 表，完整示例链路：校验 → 仓储 → IPC → 渲染）
+  listTasks: (query: TaskQuery) => Promise<IpcResult<TaskListResult>>
+  getTask: (id: number) => Promise<IpcResult<Task>>
+  createTask: (input: TaskInput) => Promise<IpcResult<Task>>
+  updateTask: (id: number, input: TaskInput) => Promise<IpcResult<Task>>
+  deleteTask: (id: number) => Promise<IpcResult<TaskDeleteResult>>
+  deleteTasks: (ids: number[]) => Promise<IpcResult<TaskDeleteResult>>
+  getTaskStats: () => Promise<IpcResult<TaskStats>>
+  seedDemoTasks: () => Promise<IpcResult<TaskSeedResult>>
 
   // 自动更新
   checkForUpdates: () => Promise<IpcResult<UpdateStatusInfo>>

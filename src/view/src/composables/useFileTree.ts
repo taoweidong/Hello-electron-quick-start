@@ -16,5 +16,11 @@ export function useFileTree() {
     selectedFile.value = node
   }
 
-  return { fileTree, selectedFile, treeProps, showArchive, selectNode }
+  /** 回到上传态（重新选择归档 / 关闭当前归档） */
+  function clearArchive(): void {
+    fileTree.value = []
+    selectedFile.value = null
+  }
+
+  return { fileTree, selectedFile, treeProps, showArchive, selectNode, clearArchive }
 }

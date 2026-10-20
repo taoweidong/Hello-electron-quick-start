@@ -40,6 +40,7 @@ const api: ElectronAPI = {
 
   // 事件监听（返回退订函数）
   onFileOpened: (callback) => subscribe<string>('file-opened', callback),
+  onNewTaskRequested: (callback) => subscribe<void>('task:new-requested', callback),
 
   // 工作目录
   getWorkspace: () => ipcRenderer.invoke('workspace:get'),
@@ -47,6 +48,16 @@ const api: ElectronAPI = {
   // 配置读写（SQLite 实例）
   getSetting: (key: string) => ipcRenderer.invoke('settings:get', key),
   setSetting: (key: string, value: string) => ipcRenderer.invoke('settings:set', key, value),
+
+  // 任务 CRUD（SQLite tasks 表）
+  listTasks: (query) => ipcRenderer.invoke('task:list', query),
+  getTask: (id: number) => ipcRenderer.invoke('task:get', id),
+  createTask: (input) => ipcRenderer.invoke('task:create', input),
+  updateTask: (id: number, input) => ipcRenderer.invoke('task:update', id, input),
+  deleteTask: (id: number) => ipcRenderer.invoke('task:delete', id),
+  deleteTasks: (ids: number[]) => ipcRenderer.invoke('task:deleteMany', ids),
+  getTaskStats: () => ipcRenderer.invoke('task:stats'),
+  seedDemoTasks: () => ipcRenderer.invoke('task:seed'),
 
   // 自动更新
   checkForUpdates: () => ipcRenderer.invoke('update:check'),

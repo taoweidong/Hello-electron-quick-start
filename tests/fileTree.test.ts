@@ -71,3 +71,16 @@ test('buildFileTree：空归档只留根节点', () => {
   const root = buildFileTree(ROOT, [])
   assert.equal(root.children.length, 0)
 })
+
+test('buildFileTree：树标签取路径最后一段（主进程回传的 name 是归档内相对路径）', () => {
+  const root = buildFileTree(ROOT, [
+    dir(`${ROOT}\\doc`, 'doc/'),
+    file(`${ROOT}\\doc\\a.txt`, 'doc/a.txt'),
+    file(`${ROOT}\\top.txt`, 'top.txt')
+  ])
+
+  const doc = root.children[0]
+  assert.equal(doc?.name, 'doc')
+  assert.equal(doc?.children[0]?.name, 'a.txt')
+  assert.equal(root.children[1]?.name, 'top.txt')
+})

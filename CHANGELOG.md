@@ -6,10 +6,13 @@
 
 ## [未发布]
 
-1.0.1 之后落在 `main` 上、尚未升版本号的改动（2026-10-03 ~ 2026-10-06）。下次发版前它们会随 `npm run release` 一起对账。
+1.0.1 之后落在 `main` 上、尚未升版本号的改动（2026-10-03 ~ 2026-10-20）。下次发版前它们会随 `npm run release` 一起对账。
 
 ### 新增
 
+- **概览页与任务管理页（完整 CRUD 示例）**：默认路由改为 Home（任务统计 / 完成率仪表盘 / 状态分布 / 最近任务 / 运行环境 / 可点击的示例场景）；新增 Tasks 页，SQLite `tasks` 表真实持久化，支持新建 / 编辑 / 删除 / 批量删除、状态快速流转、搜索防抖、状态 / 优先级 / 分类组合筛选、四种排序、分页、表单校验、详情抽屉与按 `demo_key` 幂等的 12 条示例数据。IPC 契约新增 `task:list/get/create/update/delete/deleteMany/stats/seed`，入参在主进程经 `shared/tasks/model.ts` 归一化后再进参数化 SQL；排序字段走白名单映射，不拼 query。原生菜单「新建任务」（Ctrl/Cmd+N）已接通。
+- **应用壳与视觉体系**：新增侧边栏 / 顶栏 / 页面标题组件、路由过渡、全局设计令牌（圆角 / 过渡 / 面板 / 表格 / 按钮视觉收编）；主题状态提升为 `useTheme` 单例，顶栏切换与设置页共享；文件页与设置页同步重构为空状态、信息面板与可复制路径的新版布局；窗口默认尺寸调整为 1280×860（最小 960×640）。
+- **冒烟测试增强**：`electron:test` 不再只看 `did-finish-load`，会等待 Vue 应用壳与导航项真实挂载，并监听 `render-process-gone` 失败退出。
 - **一键打包单一 EXE**：`npm run build:single` 复用既有构建链，附产物核验（存在性 / 体积 / 版本一致性 / sha512）与结果回显，`--verify-only` 可只复检既有产物；`一键打包.bat` 是双击入口。
 - **发布级全套的双击入口**：`scripts/一键打包-Windows.bat` 薄壳调用同一份 `scripts/release.js --no-upload`（= `npm run release:collect`）——`build:prod` 出 NSIS 安装包 + portable → 三件套对账核验（版本三方一致 + 逐文件 sha512 实算对账）→ 归集 `dist-release/<版本>/`，不触网、不需凭据。前置检查（Node 存在且主版本 ≥ 24、依赖已装）与 electron 镜像默认值（`ELECTRON_MIRROR` / `ELECTRON_BUILDER_BINARIES_MIRROR`，已自行设置则不覆盖）在 bat 内完成；结束时用 `dir /b` 列出 `release\` 与 `dist-release\` 的真实清单，避免把"portable 已构建"误读成"portable 已归集"。
 - **发布流水线**：`npm run release` 一键完成 `build:prod` → 三件套对账核验（版本三方一致 + `latest.yml` 逐文件 sha512/base64 与本地实算对账）→ 归集 `dist-release/<版本>/` → HTTP PUT 上传 → 远端 `latest.yml` 逐字节 + HEAD 尺寸核对；`release:collect` 只核验归集不上传。凭据仅经环境变量 `RELEASE_UPLOAD_AUTH`，不落 argv、不入仓库。
@@ -30,6 +33,7 @@
 - **主题闭环**：`settings.theme` 真实驱动界面——`main.ts` 在 mount 前引入 Element Plus 深色变量并 `applyTheme`，深/浅色由 `html.dark` class 翻转；原先的自定义 `:root` 变量组、`prefers-color-scheme` 媒体块与 `variables.scss`（曾被 vite `additionalData` 复制进每个编译单元）删除，新样式一律用 `--el-*`。
 - **应用身份单一来源**：`shared/constants` 的 `APP_CONSTANTS`（`APP_NAME` / `AUTHOR` / `HOMEPAGE`）驱动 `app.name`、窗口标题、文档标题与菜单"关于"外链；`electron-builder.json` 的 `appId` / `copyright` 与 `package.json.author` 换成真实值；**版本常量被删除**，避免再造一个漂移面。
 - **渲染层瘦身**：`services/` 的渲染器死岛（6 文件，闭环互引但无调用方）、`HomeView` / `AboutView` / `SidebarMenu`、空 `store` 与 `createPinia` 全部删除；`FilesView` 由 498 行拆到约 250 行，逻辑进 `composables/`（`useFileTree` / `useArchiveDrop`）与 `utils/`（`fileType` 扩展名谓词单一来源、`fileTree` 纯装配）。`pinia` 依赖随后从 `package.json` 卸载（它是 vue-router 5 的**可选** peer）。
+- **导航结构升级**：默认路由由 Files 改为 Home，文件管理移至 `/files`；`App.vue` 从仅承载路由视图升级为侧边栏 + 顶栏 + 页面过渡的应用壳，路由 meta 增加 description 供顶栏展示；窗口默认尺寸 1280×860。
 
 ### 修复
 
@@ -38,10 +42,12 @@
 - **缺失元数据渲染成 `NaN`**：目录没有 `size` / 时间戳时界面显示 `NaN undefined`、`NaN-NaN-NaN`，现显式显示 `-`。
 - **`readDir` 名称计算**：双分隔符 `split` 缺陷随共享路径工具（`utils/path.ts` 的 `baseName` / `parentDir` / `extname`，`\` 与 `/` 同等处理）一并修掉。
 - **文件树图标尺寸**：`.drop-zone .el-icon`（48px）是后代选择器，权重压过 `.file-icon`，把树节点图标也放大到 48px；现用 `.file-tree-node .el-icon`（16px）显式回压。
+- **文件树标签带相对路径**：主进程回传的 `name` 是归档内相对路径（如 `doc/a.txt`），旧树直接把它当标签；现统一取 `path` 最后一段，嵌套目录与文件显示正确名称（`tests/fileTree.test.ts` 增加回归用例）。
+- **任务行点击无响应**：Element Plus 的 `row-click` 在程序化触发/点击行空白处时 `column` 可能为 undefined，旧 handler 直接读 `column.type` 抛错导致详情抽屉打不开；现改为 `column?.type` 守卫，并在深链任务不在当前页时用单独拉取的快照兜底。
 
 ### 工程化
 
-- **验证链从零到有**：`npm test`（`tsc -p tsconfig.test.json` 预编译 `tests/` → `node --test`，当前 63 条）、`.github/workflows/ci.yml`（windows-latest：`npm ci` → type-check + eslint → npm test → build:prod；`electron:test` 需桌面会话，刻意留作本地发布前门禁）。可单测的纯函数一律拆成零 `electron` 顶层导入的接缝模块，fs 副作用经接口注入。
+- **验证链从零到有**：`npm test`（`tsc -p tsconfig.test.json` 预编译 `tests/` → `node --test`，当前 76 条 / 14 个文件）、`.github/workflows/ci.yml`（windows-latest：`npm ci` → type-check + eslint → npm test → build:prod；`electron:test` 需桌面会话，刻意留作本地发布前门禁）。可单测的纯函数一律拆成零 `electron` 顶层导入的接缝模块，fs 副作用经接口注入。
 - **类型治理**：`no-explicit-any` / `no-unsafe-*` / `restrict-template-expressions` 七条规则从 warn 升 **error**（基线 0 error / 0 warning，全程没有一条 `eslint-disable`）；`ipcSafe` 用泛型接缝而非 `any[]`；三份 tsconfig（node/web/test）同步开 `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes`。
 - **构建链单入口**：`build:core`（type-check + 编译主进程 + Vite 构建）被 `build` / `build:prod` / `build:portable` / `pack-single` 复用，不再各抄一份步骤；删除坏脚本 `electron:pack`；`npm run clean` 改 `scripts/clean.js`（原命令引用的 `rimraf` 本就不在依赖里，一直是坏的）。
 - **产物与打包**：Vite `target: chrome126`、`sourcemap: 'hidden'`（`.map` 不进 asar）、`manualChunks` 函数形态拆 vendor-element-plus（rolldown 不支持对象形态）；`electron-builder.json` 删 mac/linux 目标、显式 `asar` / `compression`；补 `src/view/public/favicon.ico`。

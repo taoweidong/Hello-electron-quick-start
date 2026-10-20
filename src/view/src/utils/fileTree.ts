@@ -2,7 +2,7 @@
  * 解压条目 → 文件树（方案 P2-5）：纯装配逻辑，不依赖 Vue/DOM，可被 node --test 直测。
  * 节点形状与 el-tree 的 props 映射（treeProps）绑定在一处，改字段名两个地方一起看。
  */
-import { parentDir } from './path'
+import { baseName, parentDir } from './path'
 import type { ExtractedFileInfo } from '@shared/types/electron'
 
 export interface FileTreeNode {
@@ -44,7 +44,10 @@ export function buildFileTree(basePath: string, files: ExtractedFileInfo[]): Fil
   const directoryNodes = new Map<string, FileTreeNode>([[basePath, root]])
 
   for (const file of files) {
-    if (file.isDirectory) directoryNodes.set(file.path, createDirectoryNode(file.name, file.path))
+    if (file.isDirectory) {
+      // 主进程回传的 name 是归档内相对路径；树标签只取最后一段
+      directoryNodes.set(file.path, createDirectoryNode(baseName(file.path) || file.name, file.path))
+    }
   }
 
   const attach = (node: FileTreeNode, nodePath: string): void => {
@@ -64,7 +67,7 @@ export function buildFileTree(basePath: string, files: ExtractedFileInfo[]): Fil
   for (const file of files) {
     if (file.isDirectory) continue
     const node: FileTreeNode = {
-      name: file.name,
+      name: baseName(file.path) || file.name,
       path: file.path,
       isDirectory: false,
       isLeaf: true,

@@ -27,33 +27,38 @@
 │   │   ├── utils/          #   path.ts（主进程 baseName 双分隔符解析，零 electron）
 │   │   ├── workspace/      #   工作目录解析（默认 D:\MyWinApp，env 覆盖，回落 userData，不可写则抛错）
 │   │   │                   #   trySetup.ts（目录建立 + 写探测，fs 经 SetupFs 接口注入，零 electron）
-│   │   ├── db/             #   node:sqlite 数据库单例与 settings 键值表（data/app.db，WAL）
+│   │   ├── db/             #   node:sqlite 数据库单例与 settings / tasks 表（data/app.db，WAL）
+│   │   ├── tasks/          #   repository.ts（任务仓储：参数化 SQL + 排序白名单 + 幂等示例数据，零 UI）
 │   │   ├── updater/        #   electron-updater 自动更新（两级更新源 + 源校验、状态机、事件推送）
 │   │   └── ipc/            #   ipcSafe.ts（统一注册 + IpcResult 包装）与处理器
 │   │                       #   （appHandlers / fileHandlers / workspaceHandlers /
-│   │                       #   settingsHandlers / updateHandlers）
+│   │                       #   settingsHandlers / updateHandlers / taskHandlers）
 │   ├── view/               # Vue 3 渲染进程（Vite root）
 │   │   ├── index.html
 │   │   └── src/
-│   │       ├── components/ #   FileRenderer.vue（按类型分发）+ renderers/（Text/Image/Zip/Rar/Unsupported）
-│   │       ├── composables/#   useFileTree.ts（树状态）、useArchiveDrop.ts（解压入口：拖放 + 点击/键盘选择，方案 P2-5/P3-4）
+│   │       ├── components/ #   layout/（AppSidebar/AppTopbar/PageHeader）+ tasks/（表单/详情/徽标）
+│   │       │               #   + FileRenderer.vue（按类型分发）+ renderers/（Text/Image/Zip/Rar/Unsupported）
+│   │       ├── composables/#   useTheme（主题单例）、useTasks（列表/统计/CRUD 动作）、
+│   │       │               #   useFileTree（树状态）、useArchiveDrop（解压入口：拖放 + 点击/键盘选择）
 │   │       ├── services/   #   解压器（FileExtractor 接口 + Zip/Rar 实现 + 工厂）——渲染器死岛已删
-│   │       ├── styles/     #   index.scss（滚动条/动画/工具类；颜色一律 --el-*，无自定义变量块）
+│   │       ├── styles/     #   index.scss（设计令牌 + Element Plus 视觉收编 + 页面过渡；颜色一律 --el-*）
 │   │       ├── utils/      #   index.ts（格式化）+ path.ts（双分隔符路径/扩展名解析）
 │   │       │               #   + fileType.ts（扩展名谓词与类型描述单一来源）、fileTree.ts（条目→树纯装配）
+│   │       │               #   + task.ts（状态/优先级元数据、截止日与相对时间纯函数）
 │   │       │               #   + theme.ts（resolveTheme 纯函数 + applyTheme 切 html.dark，方案 P2-3）
-│   │       ├── views/      #   页面（仅 Files / Settings，两条路由）
+│   │       ├── views/      #   页面：Home（概览）/ Tasks（CRUD 示例）/ Files / Settings，四条路由
 │   │       ├── router/     #   Vue Router
 │   │       ├── types/      #   渲染进程类型声明（含 Window.electronAPI 全局增强）
 │   │       └── main.ts
 │   └── shared/             # 主/渲染进程共享代码（别名 @shared）
 │       ├── constants/      #   身份常量单一来源（APP_NAME/AUTHOR/HOMEPAGE；版本在 package.json）
-│       └── types/          #   共享类型（electron.d.ts：ElectronAPI + IpcResult<T> 单一来源）
+│       ├── tasks/          #   model.ts（任务入参/查询归一化、枚举白名单、日期键纯函数，零 electron）
+│       └── types/          #   共享类型（electron.d.ts：ElectronAPI + IpcResult<T> + Task 域模型单一来源）
 ├── .github/workflows/ci.yml # CI（windows-latest：npm ci → type-check + eslint → npm test → build:prod；electron:test 不进 CI）
-├── test-main.js            # 冒烟测试（npm run electron:test，自动退出）
+├── test-main.js            # 冒烟测试（npm run electron:test：加载产物 + 校验应用壳真实挂载后退出）
 ├── tests/                  # node --test 单元测试（npm run test，纯函数用例：zipSlip / pathGuard / feedUrl /
 │                           #   releaseUtils / viewPath / archiveLimit / workspaceTrySetup / extractorFactory /
-│                           #   theme / fileType / fileTree / identity 十二文件）
+│                           #   theme / fileType / fileTree / identity / taskModel / taskUtils 十四文件）
 ├── scripts/
 │   ├── clean.js            # 清理产物（npm run clean，Node 内置 rmSync，不引 rimraf）
 │   ├── pack-single.js      # 一键打包脚本（npm run build:single，含产物核验与回显）
@@ -81,7 +86,7 @@
    的 `ElectronAPI` 接口；所有 invoke 通道返回 `IpcResult<T>`（`{ok,data}` | `{ok:false,error}`），
    由主进程 `ipcSafe()` 注册产出，handler 只 return/throw。preload 实现该接口，渲染进程通过
    `src/view/src/types/electron.d.ts` 做全局 Window 增强。新增 IPC 通道时三处同步修改。
-   事件订阅（onFileOpened/onUpdateStatus）返回退订函数，渲染层 onUnmounted 调用。
+   事件订阅（onFileOpened/onUpdateStatus/onNewTaskRequested）返回退订函数，渲染层 onUnmounted 调用。
 3. **常量单一来源**：`src/shared/constants/index.ts` 是唯一版本，禁止再放置编译产物。
 4. **dev 热更新**：`npm run electron:dev` 通过 cross-env 注入
    `VITE_DEV_SERVER_URL=http://localhost:5180`，Electron 加载 Vite 开发服务器。
@@ -90,13 +95,14 @@
 6. **可单测纯函数约定**：`node --test` 无法加载 import 了 `electron` 的模块，故需要直测的纯函数
    独立成零 electron 接缝模块（`workspace/trySetup.ts`、`security/archiveLimit.ts`、
    `main/utils/path.ts`、`view/utils/fileType.ts`、`view/utils/fileTree.ts`、
-   `scripts/lib/release-utils.js`），fs 类副作用经接口注入；测试文件一律放
-   `tests/`（经 tsconfig.test 编译到 `dist-test/`），不与源文件同层，避免进 `dist/` 产物。
-   `baseName` 在主进程与渲染层是双实现，改语义两边同步，用 `tests/` 用例锁行为。
+   `view/utils/task.ts`、`shared/tasks/model.ts`、`scripts/lib/release-utils.js`），
+   fs 类副作用经接口注入；测试文件一律放 `tests/`（经 tsconfig.test 编译到 `dist-test/`），
+   不与源文件同层，避免进 `dist/` 产物。`baseName` 在主进程与渲染层是双实现，改语义两边同步，
+   用 `tests/` 用例锁行为。
 7. **主题闭环**：渲染层颜色一律使用 Element Plus 的 `--el-*` 变量，禁止硬编码色值；深/浅色由
    `html.dark` class 翻转（`utils/theme.ts` 的 `applyTheme` 负责切换，`main.ts` 挂载前应用存储的
-   `theme` 值，SettingsView 保存即时生效）。不要恢复 vite `additionalData` 注入 SCSS 全局片段
-   （会把样式块复制进每个编译单元）。
+   `theme` 值；`composables/useTheme.ts` 是跨组件共享的主题单例，顶栏与设置页共用，保存即时生效）。
+   不要恢复 vite `additionalData` 注入 SCSS 全局片段（会把样式块复制进每个编译单元）。
 8. **类型治理（P2-4）**：`noUncheckedIndexedAccess` + `exactOptionalPropertyTypes` 在
    `tsconfig.node/web/test` 三份**同时**开启；ESLint 的 `no-explicit-any`/`no-unsafe-*`/
    `restrict-template-expressions` 七条为 **error**，基线 0 error 0 warning，不要新增
@@ -106,6 +112,12 @@
    `app.name`、窗口标题、文档标题、`app:getInfo`、菜单"关于"都读它；版本只在
    `package.json`（运行时 `app.getVersion()`）。`electron-builder.json` 的
    `productName`/`copyright` 与 `package.json.author` 的一致性由 `tests/identity.test.ts` 守卫。
+10. **任务 CRUD 链路**：渲染层表单只负责收集，`task:create/update` 的入参在主进程经
+    `shared/tasks/model.ts` 归一化（标题长度、枚举、标签上限、日期真实性），仓储层
+    `main/tasks/repository.ts` 只使用参数绑定；排序字段经 `normalizeTaskQuery` 白名单后由
+    `SORT_SQL` 映射，**不要把 query 拼进 ORDER BY**。示例数据按 `demo_key` 幂等补齐，
+    用户自建任务（demo_key 为 NULL）不受影响。新增任务字段时同步：`electron.d.ts` 类型 →
+    表结构 → repository 映射 → 表单 → `tests/taskModel.test.ts`。
 
 ## 常用命令
 

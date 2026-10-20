@@ -74,10 +74,10 @@ async function createWindow() {
       contextIsolation: true,
       sandbox: false
     },
-    width: 1200,
-    height: 800,
-    minWidth: 800,
-    minHeight: 600,
+    width: 1280,
+    height: 860,
+    minWidth: 960,
+    minHeight: 640,
     show: false,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     frame: true,
@@ -199,10 +199,11 @@ function createApplicationMenu() {
       label: '文件',
       submenu: [
         {
-          label: '新建',
+          label: '新建任务',
           accelerator: 'CmdOrCtrl+N',
           click: () => {
-            // 新建文件逻辑
+            // 原生菜单不直接操作路由：把意图发给渲染层，由应用壳统一导航并打开表单
+            win?.webContents.send('task:new-requested')
           }
         },
         {

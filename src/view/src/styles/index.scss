@@ -1,31 +1,179 @@
-// 全局样式：颜色一律取 Element Plus 的 --el-* 变量，
-// 深色系由 html.dark class 翻转（主题闭环，方案 P2-3；
-// 原自定义 :root 变量组与 prefers-color-scheme 双轨已移除）
+// 全局样式与设计令牌（方案 P2-3：颜色一律取 Element Plus 的 --el-* 变量，
+// 深色由 html.dark class 翻转；新增样式禁止硬编码色值，需要透明度用 color-mix 派生）。
 
-// 自定义滚动条样式
+:root {
+  --app-sidebar-width: 236px;
+  --app-topbar-height: 68px;
+  --app-content-padding-y: 52px;
+  --app-radius-xl: 18px;
+  --app-radius-lg: 14px;
+  --app-radius-md: 10px;
+  --app-transition: 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  // 让 Element Plus 控件与自定义面板的圆角语言一致
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+  --el-card-border-radius: 14px;
+  --el-dialog-border-radius: 18px;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  overflow: hidden;
+  font-family: 'Inter', 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+  color: var(--el-text-color-primary);
+  background-color: var(--el-bg-color-page);
+  background-image:
+    radial-gradient(circle at 8% -10%, color-mix(in srgb, var(--el-color-primary) 8%, transparent), transparent 34%),
+    radial-gradient(circle at 102% -6%, color-mix(in srgb, var(--el-color-success) 6%, transparent), transparent 30%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  color: var(--el-color-white);
+  background: color-mix(in srgb, var(--el-color-primary) 78%, transparent);
+}
+
+// 滚动条
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--el-bg-color-page);
-  border-radius: 4px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--el-border-color-light);
-  border-radius: 4px;
-  
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+
   &:hover {
     background: var(--el-text-color-secondary);
+    background-clip: content-box;
   }
 }
 
-// 动画类
+// 通用面板：页面里的卡片统一走这个类，避免每页复制边框/阴影
+.app-surface {
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--el-box-shadow-lighter);
+}
+
+// Element Plus 视觉收编
+.el-button {
+  font-weight: 500;
+}
+
+.el-button.is-round {
+  border-radius: 999px;
+}
+
+.el-card {
+  border-color: var(--el-border-color-lighter);
+  box-shadow: var(--el-box-shadow-lighter);
+  transition: border-color var(--app-transition), box-shadow var(--app-transition);
+}
+
+.el-card__header {
+  padding: 16px 20px;
+  border-bottom-color: var(--el-border-color-lighter);
+}
+
+.el-card__body {
+  padding: 20px;
+}
+
+.el-dialog {
+  border-radius: var(--app-radius-xl);
+  box-shadow: var(--el-box-shadow);
+}
+
+.el-message-box {
+  border-radius: var(--app-radius-lg);
+}
+
+.el-drawer {
+  --el-drawer-padding-primary: 22px;
+}
+
+.el-tag {
+  font-weight: 500;
+}
+
+.el-table {
+  --el-table-header-bg-color: var(--el-fill-color-lighter);
+  --el-table-header-text-color: var(--el-text-color-secondary);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--el-color-primary) 5%, var(--el-bg-color));
+  --el-table-border-color: var(--el-border-color-lighter);
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+}
+
+.el-table th.el-table__cell {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.el-table .el-table__cell {
+  padding: 11px 0;
+}
+
+.el-pagination {
+  --el-pagination-bg-color: transparent;
+  --el-pagination-button-disabled-bg-color: transparent;
+}
+
+.el-progress-bar__outer {
+  background-color: var(--el-fill-color-light);
+}
+
+.el-form-item__label {
+  font-weight: 500;
+}
+
+.el-overlay {
+  backdrop-filter: blur(2px);
+}
+
+// 路由过渡：轻微上移 + 淡入，避免大幅位移动画在桌面端显得晃
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 160ms ease, transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+// 兼容旧动画类
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity 180ms ease;
 }
 
 .fade-enter-from,
@@ -33,23 +181,11 @@
   opacity: 0;
 }
 
-.slide-enter-active,
-.slide-leave-active {
-  transition: transform 0.3s ease;
-}
-
-.slide-enter-from {
-  transform: translateX(-100%);
-}
-
-.slide-leave-to {
-  transform: translateX(100%);
-}
-
 // 工具类
 .text-center { text-align: center; }
 .text-left { text-align: left; }
 .text-right { text-align: right; }
+.text-muted { color: var(--el-text-color-secondary); }
 
 .mt-1 { margin-top: 0.25rem; }
 .mt-2 { margin-top: 0.5rem; }
@@ -66,12 +202,23 @@
 .p-3 { padding: 0.75rem; }
 .p-4 { padding: 1rem; }
 
-// 布局工具类
 .flex { display: flex; }
 .flex-col { flex-direction: column; }
 .items-center { align-items: center; }
 .justify-center { justify-content: center; }
 .justify-between { justify-content: space-between; }
+
+// 无障碍：尊重系统“减少动态效果”设置
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 // 响应式断点
 @media (max-width: 768px) {
