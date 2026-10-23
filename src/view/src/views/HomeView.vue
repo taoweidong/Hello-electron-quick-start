@@ -40,23 +40,7 @@
       </div>
     </section>
 
-    <section class="stats-grid" aria-label="任务概览">
-      <article
-        v-for="card in statCards"
-        :key="card.label"
-        class="stat-card app-surface"
-        :class="`is-${card.tone}`"
-      >
-        <span class="stat-card__icon">
-          <el-icon :size="20"><component :is="card.icon" /></el-icon>
-        </span>
-        <div class="stat-card__body">
-          <span class="stat-card__label">{{ card.label }}</span>
-          <strong>{{ loading ? '—' : card.value }}</strong>
-          <small>{{ card.hint }}</small>
-        </div>
-      </article>
-    </section>
+    <StatRail :items="statCards" :loading="loading" aria-label="任务概览" />
 
     <div class="home-grid">
       <section class="panel recent-panel app-surface">
@@ -105,9 +89,7 @@
               </div>
               <div class="recent-item__meta">
                 <TaskPriorityBadge :priority="task.priority" />
-                <span class="meta-divider">·</span>
                 <span>{{ task.category }}</span>
-                <span v-if="task.dueDate" class="meta-divider">·</span>
                 <span
                   v-if="task.dueDate"
                   class="recent-item__due"
@@ -115,7 +97,6 @@
                 >
                   {{ formatDueLabel(task.dueDate, task.status) }}
                 </span>
-                <span class="meta-divider">·</span>
                 <span>{{ formatRelativeTime(task.updatedAt) }}</span>
               </div>
             </div>
@@ -205,24 +186,24 @@
         </div>
         <p>每个入口都对应真实可操作的功能，而不是静态占位。</p>
       </div>
-      <div class="scenario-grid">
+      <div class="scenario-board app-surface">
         <button
           v-for="card in scenarioCards"
           :key="card.title"
           type="button"
-          class="scenario-card app-surface"
+          class="scenario-item"
           :class="`is-${card.tone}`"
           @click="card.action"
         >
-          <span class="scenario-card__icon">
+          <span class="scenario-item__icon">
             <el-icon :size="20"><component :is="card.icon" /></el-icon>
           </span>
-          <span class="scenario-card__body">
-            <span class="scenario-card__tag">{{ card.tag }}</span>
+          <span class="scenario-item__body">
+            <span class="scenario-item__tag">{{ card.tag }}</span>
             <strong>{{ card.title }}</strong>
-            <span class="scenario-card__desc">{{ card.description }}</span>
+            <span class="scenario-item__desc">{{ card.description }}</span>
           </span>
-          <el-icon class="scenario-card__arrow"><ArrowRight /></el-icon>
+          <el-icon class="scenario-item__arrow"><ArrowRight /></el-icon>
         </button>
       </div>
     </section>
@@ -238,8 +219,8 @@ import {
   ArrowRight,
   CircleCheck,
   CircleCheckFilled,
+  Connection,
   Cpu,
-  Delete,
   Filter,
   FolderOpened,
   InfoFilled,
@@ -265,18 +246,11 @@ import type {
 import { APP_CONSTANTS } from '@shared/constants'
 import TaskStatusTag from '@/components/tasks/TaskStatusTag.vue'
 import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue'
+import StatRail from '@/components/layout/StatRail.vue'
 import { useTheme } from '@/composables/useTheme'
-import { dueState, formatDueLabel, formatRelativeTime } from '@/utils/task'
-
-type StatTone = 'primary' | 'warning' | 'success' | 'danger' | 'info'
-
-interface StatCard {
-  label: string
-  value: number
-  hint: string
-  tone: StatTone
-  icon: Component
-}
+import { dueState, formatDueLabel } from '@/utils/task'
+import { formatRelativeTime } from '@/utils/time'
+import type { StatRailItem, StatTone } from '@/utils/ui'
 
 interface ScenarioCard {
   title: string
@@ -343,7 +317,7 @@ const platformLabel = computed(() => {
   return `${names[platform] ?? platform} · ${systemInfo.value?.arch ?? ''}`
 })
 
-const statCards = computed<StatCard[]>(() => [
+const statCards = computed<StatRailItem[]>(() => [
   {
     label: '全部任务',
     value: stats.value.total,
@@ -425,12 +399,12 @@ const scenarioCards = computed<ScenarioCard[]>(() => [
     }
   },
   {
-    title: '批量操作',
-    description: '表格多选后批量删除，体验带确认的危险操作流程。',
-    tag: '批量',
-    tone: 'danger',
-    icon: Delete,
-    action: goTasks
+    title: '插件初始化脚本',
+    description: '安装示例 Python 插件，查看注册完成后自动执行的过程与日志。',
+    tag: '插件',
+    tone: 'warning',
+    icon: Connection,
+    action: goPlugins
   },
   {
     title: '文件解压预览',
@@ -472,6 +446,10 @@ function goTasks(): void {
 
 function goFiles(): void {
   void router.push('/files')
+}
+
+function goPlugins(): void {
+  void router.push('/plugins')
 }
 
 function navigateToTask(task: Task): void {
@@ -698,77 +676,6 @@ onMounted(() => {
   }
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.stat-card {
-  --stat-color: var(--el-color-primary);
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 18px;
-  transition: transform var(--app-transition), box-shadow var(--app-transition);
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--el-box-shadow-light);
-}
-
-.stat-card.is-warning {
-  --stat-color: var(--el-color-warning);
-}
-
-.stat-card.is-success {
-  --stat-color: var(--el-color-success);
-}
-
-.stat-card.is-danger {
-  --stat-color: var(--el-color-danger);
-}
-
-.stat-card__icon {
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  color: var(--stat-color);
-  background: color-mix(in srgb, var(--stat-color) 12%, transparent);
-}
-
-.stat-card__body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.stat-card__label {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.stat-card__body strong {
-  margin-top: 1px;
-  font-size: 26px;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-  color: var(--el-text-color-primary);
-}
-
-.stat-card__body small {
-  margin-top: 2px;
-  font-size: 11px;
-  color: var(--el-text-color-placeholder);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .home-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
@@ -828,8 +735,7 @@ onMounted(() => {
   margin-bottom: 3px;
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   color: var(--el-text-color-placeholder);
 }
 
@@ -917,15 +823,11 @@ onMounted(() => {
 .recent-item__meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 11px;
   flex-wrap: wrap;
   margin-top: 5px;
   font-size: 11.5px;
   color: var(--el-text-color-secondary);
-}
-
-.meta-divider {
-  color: var(--el-text-color-placeholder);
 }
 
 .recent-item__due.is-overdue {
@@ -1131,55 +1033,61 @@ onMounted(() => {
   color: var(--el-text-color-secondary);
 }
 
-.scenario-grid {
+.scenario-board {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
 }
 
-.scenario-card {
+.scenario-item {
   --scenario-color: var(--el-color-primary);
   display: flex;
   align-items: flex-start;
   gap: 13px;
-  padding: 16px;
+  padding: 18px 20px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   text-align: left;
   cursor: pointer;
   font: inherit;
-  transition:
-    transform var(--app-transition),
-    box-shadow var(--app-transition),
-    border-color var(--app-transition);
+  transition: background-color var(--app-transition);
 }
 
-.scenario-card.is-info {
+.scenario-item:nth-child(odd) {
+  border-right: 1px solid var(--el-border-color-lighter);
+}
+
+.scenario-item:nth-child(-n + 4) {
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.scenario-item.is-info {
   --scenario-color: var(--el-color-info);
 }
 
-.scenario-card.is-success {
+.scenario-item.is-success {
   --scenario-color: var(--el-color-success);
 }
 
-.scenario-card.is-warning {
+.scenario-item.is-warning {
   --scenario-color: var(--el-color-warning);
 }
 
-.scenario-card.is-danger {
+.scenario-item.is-danger {
   --scenario-color: var(--el-color-danger);
 }
 
-.scenario-card:hover {
-  transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--scenario-color) 40%, var(--el-border-color-lighter));
-  box-shadow: var(--el-box-shadow-light);
+.scenario-item:hover {
+  background: var(--el-fill-color-lighter);
 }
 
-.scenario-card:focus-visible {
+.scenario-item:focus-visible {
   outline: 2px solid var(--el-color-primary);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
-.scenario-card__icon {
+.scenario-item__icon {
   width: 40px;
   height: 40px;
   flex: 0 0 40px;
@@ -1190,41 +1098,40 @@ onMounted(() => {
   background: color-mix(in srgb, var(--scenario-color) 12%, transparent);
 }
 
-.scenario-card__body {
+.scenario-item__body {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.scenario-card__tag {
-  font-size: 10px;
+.scenario-item__tag {
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   color: var(--scenario-color);
 }
 
-.scenario-card__body strong {
+.scenario-item__body strong {
   margin-top: 2px;
   font-size: 14px;
   color: var(--el-text-color-primary);
 }
 
-.scenario-card__desc {
+.scenario-item__desc {
   margin-top: 4px;
   font-size: 12px;
   line-height: 1.55;
   color: var(--el-text-color-secondary);
 }
 
-.scenario-card__arrow {
+.scenario-item__arrow {
   margin-top: 2px;
   color: var(--el-text-color-placeholder);
   transition: transform var(--app-transition), color var(--app-transition);
 }
 
-.scenario-card:hover .scenario-card__arrow {
+.scenario-item:hover .scenario-item__arrow {
   color: var(--scenario-color);
   transform: translateX(3px);
 }
@@ -1241,20 +1148,12 @@ onMounted(() => {
 }
 
 @media (max-width: 1240px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .home-grid {
     grid-template-columns: 1fr;
   }
 
   .home-side {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .scenario-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1268,20 +1167,26 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .scenario-grid {
+  .scenario-board {
     grid-template-columns: 1fr;
+  }
+
+  .scenario-item:nth-child(odd) {
+    border-right: none;
+  }
+
+  .scenario-item:nth-child(-n + 4) {
+    border-bottom: none;
+  }
+
+  .scenario-item + .scenario-item {
+    border-top: 1px solid var(--el-border-color-lighter);
   }
 
   .section-heading {
     align-items: flex-start;
     flex-direction: column;
     gap: 6px;
-  }
-}
-
-@media (max-width: 700px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
   }
 }
 </style>

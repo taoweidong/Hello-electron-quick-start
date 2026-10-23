@@ -1,4 +1,4 @@
-import type { ElectronAPI, UpdateStatusInfo } from '@shared/types/electron'
+import type { ElectronAPI, PluginInfo, UpdateStatusInfo } from '@shared/types/electron'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 // 暴露安全的 API 给渲染进程（类型以 @shared/types/electron 的 ElectronAPI 为准）
@@ -58,6 +58,16 @@ const api: ElectronAPI = {
   deleteTasks: (ids: number[]) => ipcRenderer.invoke('task:deleteMany', ids),
   getTaskStats: () => ipcRenderer.invoke('task:stats'),
   seedDemoTasks: () => ipcRenderer.invoke('task:seed'),
+
+  // 插件系统
+  listPlugins: () => ipcRenderer.invoke('plugin:list'),
+  runPlugin: (id: string) => ipcRenderer.invoke('plugin:run', id),
+  setPluginEnabled: (id: string, enabled: boolean) =>
+    ipcRenderer.invoke('plugin:setEnabled', id, enabled),
+  reloadPlugins: () => ipcRenderer.invoke('plugin:reload'),
+  installSamplePlugin: () => ipcRenderer.invoke('plugin:installSample'),
+  openPluginFolder: (id?: string) => ipcRenderer.invoke('plugin:openFolder', id),
+  onPluginStatus: (callback) => subscribe<PluginInfo>('plugin:status', callback),
 
   // 自动更新
   checkForUpdates: () => ipcRenderer.invoke('update:check'),

@@ -18,8 +18,9 @@
 - **概览页（Home，默认路由）**：任务统计（全部 / 进行中 / 已完成 / 逾期）、完成率仪表盘、状态分布、最近任务、运行环境与可点击的示例场景入口；空数据时可一键写入 12 条演示任务。
 - **任务管理页（Tasks，完整 CRUD 示例）**：SQLite `tasks` 表真实持久化；支持新建 / 编辑 / 删除 / 批量删除、状态快速流转、关键词搜索（防抖）、状态 / 优先级 / 分类组合筛选、四种排序、分页、表单校验、详情抽屉，以及按 `demo_key` 幂等的示例数据补齐。原生菜单「新建任务」（Ctrl/Cmd+N）也会直接唤起创建表单。
 - **文件管理页（Files）**：拖拽 ZIP/RAR 到窗口即解压并生成文件树，也可点击（或键盘 Enter/空格）选择压缩包——拖放区有无障碍替代入口；点击文件按类型分发渲染（文本内容、图片预览、压缩包提示）。ZIP 走 jszip、RAR 走 node-unrar-js（WASM，免外部二进制），解压均在主进程完成。
+- **插件页（Plugins）**：扫描工作区 `plugins/<id>/plugin.json`，支持 Python / Node 两种入口脚本；插件注册完成后按 `runOnStartup` 执行，也可手动运行、启停、重新扫描、查看 stdout/stderr，并一键安装示例 Python 插件。入口路径经相对路径校验 + `realpath` 防逃逸，执行采用 `spawn` 参数数组（`shell: false`）、默认 15 秒超时与 64KB 输出上限；Python 解释器可用 `MYWINAPP_PYTHON` 指定。脚本以当前用户权限运行，只应安装可信插件。
 - **设置页（Settings）**：浅色 / 深色主题卡片（保存即生效，顶栏主题按钮与设置页共享同一状态）、工作目录展示与复制（含回落状态）、快捷键说明、软件更新卡片、运行环境与项目主页。
-- **工作目录**：默认 `D:\MyWinApp`（环境变量 `MYWINAPP_WORKDIR` 覆盖），统一承载 `logs/`（应用日志）、`data/`（SQLite 数据库）、`config/`（配置预留）；目标盘不可用时整体回落 `userData`，回落目录同样不可写则直接报错退出（不再静默报告成功）。
+- **工作目录**：默认 `D:\MyWinApp`（环境变量 `MYWINAPP_WORKDIR` 覆盖），统一承载 `logs/`（应用日志）、`data/`（SQLite 数据库）、`config/`（配置预留）与 `plugins/`（插件脚本）；目标盘不可用时整体回落 `userData`，回落目录同样不可写则直接报错退出（不再静默报告成功）。
 - **SQLite 存储**：`node:sqlite`（Node 24 内置，零原生依赖）单例连接 `data/app.db`（WAL），`settings` 键值表与 `tasks` 任务表均经 IPC 读写；缺失键返回空值不抛错。
 - **自动升级**：generic provider **两级**更新源（环境变量 `MYWINAPP_UPDATE_URL` > 打包内置 `app-update.yml`；env 覆盖须先过 `updater/feedUrl.ts` 的协议 / 内嵌凭据 / 主机白名单校验，不合规则告警并回落内置源）；启动延迟 5s 自动检查 + 设置页手动检查；发现新版本自动下载（差量优先），退出时自动安装或立即重启安装。
 - **应用基座**：带侧边栏 / 顶栏的应用壳、路由过渡与深浅色设计令牌、中文应用菜单、单实例锁、外部链接系统浏览器打开、安全基线（contextIsolation / 无 nodeIntegration）。
@@ -28,12 +29,12 @@
 
 ```
 src/
-├── main/       # 主进程：入口（窗口/菜单/日志）、preload、workspace/ db/ tasks/ updater/、ipc/ 处理器
+├── main/       # 主进程：入口（窗口/菜单/日志）、preload、workspace/ db/ tasks/ plugins/ updater/、ipc/ 处理器
 ├── view/       # 渲染进程：Vite root，页面 / layout+任务组件 / composables / services（解压器）/ utils / router
-└── shared/     # 共享层：ElectronAPI 与任务域类型单一来源、任务校验纯函数、身份常量（别名 @shared）
+└── shared/     # 共享层：ElectronAPI 与任务/插件域类型单一来源、领域校验纯函数、身份常量（别名 @shared）
 ```
 
-- **IPC 约定**：渲染进程经 `window.electronAPI`（contextBridge）调用；主进程 handler 一律通过 `ipc/ipcSafe.ts` 注册，返回统一为 `IpcResult<T>`（`{ok,data}` 或 `{ok:false,error:{code,message}}`），失败写 WARN 日志；事件订阅返回退订函数。新增通道需 preload / handler / 类型三处同步。通道全集见 `src/main/preload.ts`：文件读写与解压、应用/系统/性能信息、窗口控制、拖拽取路径（`webUtils.getPathForFile`）、工作目录、配置读写、任务 CRUD 与统计、更新检查/安装/状态与 `update:status` 推送事件。
+- **IPC 约定**：渲染进程经 `window.electronAPI`（contextBridge）调用；主进程 handler 一律通过 `ipc/ipcSafe.ts` 注册，返回统一为 `IpcResult<T>`（`{ok,data}` 或 `{ok:false,error:{code,message}}`），失败写 WARN 日志；事件订阅返回退订函数。新增通道需 preload / handler / 类型三处同步。通道全集见 `src/main/preload.ts`：文件读写与解压、应用/系统/性能信息、窗口控制、拖拽取路径（`webUtils.getPathForFile`）、工作目录、配置读写、任务 CRUD 与统计、插件列表/运行/启停/重扫/示例安装/打开目录、更新检查/安装/状态与 `update:status`、`plugin:status` 推送事件。
 - 详细目录结构与构建要点：[docs/project-structure.md](docs/project-structure.md)；面向 AI/代理的工作约定：[AGENTS.md](AGENTS.md)。
 
 ## 常用命令
@@ -66,7 +67,7 @@ npm run clean            # 清理 dist / release / *.tsbuildinfo
 ## 目录与数据
 
 - 安装版默认安装到 `%LOCALAPPDATA%\Programs\My-Win-App`；
-- 工作目录默认 `D:\MyWinApp`：`logs\app.log` 排障日志、`data\app.db` SQLite 数据库（WAL）、`config\` 配置预留；
+- 工作目录默认 `D:\MyWinApp`：`logs\app.log` 排障日志、`data\app.db` SQLite 数据库（WAL）、`config\` 配置预留、`plugins\` 插件目录；
 - 升级缓存位于 `%LOCALAPPDATA%\my-win-app-updater`。
 
 ## 文档索引

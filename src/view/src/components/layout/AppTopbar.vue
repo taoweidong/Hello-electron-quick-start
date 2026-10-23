@@ -77,8 +77,7 @@ function handleToggleTheme(): void {
   margin-bottom: 2px;
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--el-text-color-placeholder);
 }
 

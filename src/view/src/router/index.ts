@@ -39,6 +39,15 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/plugins',
+    name: 'Plugins',
+    component: () => import('@/views/PluginsView.vue'),
+    meta: {
+      title: '插件',
+      description: '本地插件注册、初始化脚本执行与运行日志'
+    }
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: () => import('@/views/SettingsView.vue'),

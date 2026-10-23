@@ -1,12 +1,8 @@
 // 任务展示辅助纯函数：截止日状态与相对时间固定 today/now 注入，避免时区导致偶发
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import {
-  dueState,
-  formatDateTime,
-  formatDueLabel,
-  formatRelativeTime
-} from '../src/view/src/utils/task'
+import { dueState, formatDueLabel } from '../src/view/src/utils/task'
+import { formatDateTime, formatRelativeTime } from '../src/view/src/utils/time'
 
 const TODAY = '2026-10-20'
 

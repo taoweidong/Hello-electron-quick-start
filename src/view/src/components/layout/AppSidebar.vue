@@ -52,6 +52,7 @@ import { computed, onMounted, ref } from 'vue'
 import type { Component } from 'vue'
 import { useRoute } from 'vue-router'
 import {
+  Connection,
   Expand,
   Fold,
   FolderOpened,
@@ -75,6 +76,7 @@ const navItems: Array<{ path: string; label: string; icon: Component }> = [
   { path: '/', label: '概览', icon: Odometer },
   { path: '/tasks', label: '任务管理', icon: Tickets },
   { path: '/files', label: '文件管理', icon: FolderOpened },
+  { path: '/plugins', label: '插件', icon: Connection },
   { path: '/settings', label: '设置', icon: Setting }
 ]
 

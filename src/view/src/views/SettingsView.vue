@@ -92,6 +92,7 @@
             <span><strong>logs/</strong>运行日志</span>
             <span><strong>data/</strong>SQLite</span>
             <span><strong>config/</strong>配置文件</span>
+            <span><strong>plugins/</strong>插件脚本</span>
           </div>
         </section>
 
@@ -513,7 +514,7 @@ function openHomepage(): void {
 
 .path-facts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-top: 12px;
 }

@@ -273,8 +273,7 @@ async function copyPath(): Promise<void> {
   margin-bottom: 3px;
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   color: var(--el-text-color-placeholder);
 }
 

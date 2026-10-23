@@ -41,3 +41,8 @@ export function getDataDir(): string {
 export function getConfigDir(): string {
   return join(resolveWorkspace().path, 'config')
 }
+
+/** 插件目录由插件系统按需创建，不参与 trySetup 的启动写探测 */
+export function getPluginsDir(): string {
+  return join(resolveWorkspace().path, 'plugins')
+}

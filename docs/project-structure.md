@@ -29,14 +29,16 @@
 │   │   │                   #   trySetup.ts（目录建立 + 写探测，fs 经 SetupFs 接口注入，零 electron）
 │   │   ├── db/             #   node:sqlite 数据库单例与 settings / tasks 表（data/app.db，WAL）
 │   │   ├── tasks/          #   repository.ts（任务仓储：参数化 SQL + 排序白名单 + 幂等示例数据，零 UI）
+│   │   ├── plugins/        #   manifest.ts（清单/入口校验，零 electron）+ runner.ts（Python/Node spawn 执行）
+│   │   │                   #   + index.ts（工作区 plugins/ 扫描、启动后执行、状态广播、示例安装）
 │   │   ├── updater/        #   electron-updater 自动更新（两级更新源 + 源校验、状态机、事件推送）
 │   │   └── ipc/            #   ipcSafe.ts（统一注册 + IpcResult 包装）与处理器
 │   │                       #   （appHandlers / fileHandlers / workspaceHandlers /
-│   │                       #   settingsHandlers / updateHandlers / taskHandlers）
+│   │                       #   settingsHandlers / updateHandlers / taskHandlers / pluginHandlers）
 │   ├── view/               # Vue 3 渲染进程（Vite root）
 │   │   ├── index.html
 │   │   └── src/
-│   │       ├── components/ #   layout/（AppSidebar/AppTopbar/PageHeader）+ tasks/（表单/详情/徽标）
+│   │       ├── components/ #   layout/（AppSidebar/AppTopbar/PageHeader/StatRail）+ tasks/（表单/详情/徽标）
 │   │       │               #   + FileRenderer.vue（按类型分发）+ renderers/（Text/Image/Zip/Rar/Unsupported）
 │   │       ├── composables/#   useTheme（主题单例）、useTasks（列表/统计/CRUD 动作）、
 │   │       │               #   useFileTree（树状态）、useArchiveDrop（解压入口：拖放 + 点击/键盘选择）
@@ -44,21 +46,22 @@
 │   │       ├── styles/     #   index.scss（设计令牌 + Element Plus 视觉收编 + 页面过渡；颜色一律 --el-*）
 │   │       ├── utils/      #   index.ts（格式化）+ path.ts（双分隔符路径/扩展名解析）
 │   │       │               #   + fileType.ts（扩展名谓词与类型描述单一来源）、fileTree.ts（条目→树纯装配）
-│   │       │               #   + task.ts（状态/优先级元数据、截止日与相对时间纯函数）
-│   │       │               #   + theme.ts（resolveTheme 纯函数 + applyTheme 切 html.dark，方案 P2-3）
-│   │       ├── views/      #   页面：Home（概览）/ Tasks（CRUD 示例）/ Files / Settings，四条路由
+│   │       │               #   + task.ts（状态/优先级元数据、截止日纯函数）、time.ts（相对时间）
+│   │       │               #   + ui.ts（统计条类型）、theme.ts（resolveTheme + applyTheme，方案 P2-3）
+│   │       ├── views/      #   页面：Home / Tasks / Files / Plugins / Settings，五条路由
 │   │       ├── router/     #   Vue Router
 │   │       ├── types/      #   渲染进程类型声明（含 Window.electronAPI 全局增强）
 │   │       └── main.ts
 │   └── shared/             # 主/渲染进程共享代码（别名 @shared）
 │       ├── constants/      #   身份常量单一来源（APP_NAME/AUTHOR/HOMEPAGE；版本在 package.json）
 │       ├── tasks/          #   model.ts（任务入参/查询归一化、枚举白名单、日期键纯函数，零 electron）
-│       └── types/          #   共享类型（electron.d.ts：ElectronAPI + IpcResult<T> + Task 域模型单一来源）
+│       └── types/          #   共享类型（electron.d.ts：ElectronAPI + IpcResult<T> + Task/Plugin 域模型）
 ├── .github/workflows/ci.yml # CI（windows-latest：npm ci → type-check + eslint → npm test → build:prod；electron:test 不进 CI）
 ├── test-main.js            # 冒烟测试（npm run electron:test：加载产物 + 校验应用壳真实挂载后退出）
 ├── tests/                  # node --test 单元测试（npm run test，纯函数用例：zipSlip / pathGuard / feedUrl /
 │                           #   releaseUtils / viewPath / archiveLimit / workspaceTrySetup / extractorFactory /
-│                           #   theme / fileType / fileTree / identity / taskModel / taskUtils 十四文件）
+│                           #   theme / fileType / fileTree / identity / taskModel / taskUtils /
+│                           #   pluginManifest 十五文件，83 条）
 ├── scripts/
 │   ├── clean.js            # 清理产物（npm run clean，Node 内置 rmSync，不引 rimraf）
 │   ├── pack-single.js      # 一键打包脚本（npm run build:single，含产物核验与回显）
@@ -86,7 +89,7 @@
    的 `ElectronAPI` 接口；所有 invoke 通道返回 `IpcResult<T>`（`{ok,data}` | `{ok:false,error}`），
    由主进程 `ipcSafe()` 注册产出，handler 只 return/throw。preload 实现该接口，渲染进程通过
    `src/view/src/types/electron.d.ts` 做全局 Window 增强。新增 IPC 通道时三处同步修改。
-   事件订阅（onFileOpened/onUpdateStatus/onNewTaskRequested）返回退订函数，渲染层 onUnmounted 调用。
+   事件订阅（onFileOpened/onUpdateStatus/onNewTaskRequested/onPluginStatus）返回退订函数，渲染层 onUnmounted 调用。
 3. **常量单一来源**：`src/shared/constants/index.ts` 是唯一版本，禁止再放置编译产物。
 4. **dev 热更新**：`npm run electron:dev` 通过 cross-env 注入
    `VITE_DEV_SERVER_URL=http://localhost:5180`，Electron 加载 Vite 开发服务器。
@@ -94,8 +97,9 @@
    electron-builder 自动附带生产依赖，安装包体积显著减小。
 6. **可单测纯函数约定**：`node --test` 无法加载 import 了 `electron` 的模块，故需要直测的纯函数
    独立成零 electron 接缝模块（`workspace/trySetup.ts`、`security/archiveLimit.ts`、
-   `main/utils/path.ts`、`view/utils/fileType.ts`、`view/utils/fileTree.ts`、
-   `view/utils/task.ts`、`shared/tasks/model.ts`、`scripts/lib/release-utils.js`），
+   `main/utils/path.ts`、`main/plugins/manifest.ts`、`view/utils/fileType.ts`、
+   `view/utils/fileTree.ts`、`view/utils/task.ts`、`view/utils/time.ts`、
+   `shared/tasks/model.ts`、`scripts/lib/release-utils.js`），
    fs 类副作用经接口注入；测试文件一律放 `tests/`（经 tsconfig.test 编译到 `dist-test/`），
    不与源文件同层，避免进 `dist/` 产物。`baseName` 在主进程与渲染层是双实现，改语义两边同步，
    用 `tests/` 用例锁行为。
@@ -118,6 +122,14 @@
     `SORT_SQL` 映射，**不要把 query 拼进 ORDER BY**。示例数据按 `demo_key` 幂等补齐，
     用户自建任务（demo_key 为 NULL）不受影响。新增任务字段时同步：`electron.d.ts` 类型 →
     表结构 → repository 映射 → 表单 → `tests/taskModel.test.ts`。
+11. **插件系统**：工作区 `plugins/<id>/plugin.json` + 入口脚本。`main/plugins/manifest.ts`
+    校验 id（必须等于目录名）、entry（只允许相对路径，拒绝绝对/盘符/UNC/`..`/控制字符）与
+    runtime 扩展名；`index.ts` 再用 `realpath` + `relative` 确认入口未通过符号链接逃出插件目录。
+    脚本由 `runner.ts` 以 `spawn` + 参数数组执行（`shell: false`），工作目录固定为插件目录，
+    Python 解释器经 `MYWINAPP_PYTHON` 或 `python` / `py -3` 探测，默认 15s 超时、64KB 输出上限。
+    启动顺序：`initPluginRegistry()` 只扫描登记 → 窗口创建后 `runStartupPlugins()` 执行
+    `runOnStartup` 插件；手动运行/启停/扫描/示例安装走 `plugin:*` IPC，状态经 `plugin:status`
+    推送。插件脚本以当前用户权限运行，**无法沙箱化第三方代码**，UI 明确提示只安装可信插件。
 
 ## 常用命令
 

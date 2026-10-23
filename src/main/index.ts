@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { resolveWorkspace } from './workspace'
 import { getDb, closeDb } from './db'
 import { initUpdater } from './updater'
+import { initPluginRegistry, runStartupPlugins } from './plugins'
 import { grantRootDir } from './security/pathGuard'
 import { logInfo, logWarn, logError, logErrorWithStack } from './logger'
 import { APP_CONSTANTS } from '../shared/constants'
@@ -155,9 +156,21 @@ app
     }
     // 解压根登记进路径允许集：渲染层只能在这里读写，加上 dialog 选定目录（方案 B2/S2）
     grantRootDir(join(app.getPath('userData'), 'extracted'))
+    // 插件注册：只扫描清单与入口（不执行脚本），窗口就绪后再跑 runOnStartup
+    try {
+      initPluginRegistry()
+    } catch (error) {
+      logError(`Plugin registry init failed: ${(error as Error).message}`)
+    }
     // 自动更新（更新源由环境变量或打包内置 app-update.yml 决定，见方案 B2/S3）
     initUpdater((msg) => logInfo(`[updater] ${msg}`))
     await createWindow()
+    // 插件初始化结束后执行脚本：延迟到窗口加载后，避免阻塞首屏与丢状态事件
+    setTimeout(() => {
+      void runStartupPlugins().catch((error) => {
+        logErrorWithStack('ERROR', error)
+      })
+    }, 800)
   })
   .catch((error) => {
     logErrorWithStack('ERROR', error)

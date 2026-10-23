@@ -33,6 +33,7 @@ withDefaults(
 }
 
 .page-header__copy {
+  flex: 1 1 460px;
   min-width: 0;
 }
 
@@ -41,16 +42,16 @@ withDefaults(
   margin-bottom: 6px;
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   color: var(--el-color-primary);
 }
 
 .page-header h1 {
   margin: 0;
-  font-size: 26px;
-  line-height: 1.25;
-  letter-spacing: -0.02em;
+  font-family: var(--app-font-display);
+  font-size: 28px;
+  line-height: 1.22;
+  letter-spacing: -0.025em;
   color: var(--el-text-color-primary);
 }
 

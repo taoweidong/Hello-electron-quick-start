@@ -9,6 +9,12 @@
   --app-radius-lg: 14px;
   --app-radius-md: 10px;
   --app-transition: 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  // Windows 原生字体栈：标题用 Display、正文用 Text，路径/输出用等宽字体
+  --app-font-display: 'Segoe UI Variable Display', 'Segoe UI', 'Microsoft YaHei UI',
+    'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --app-font-body: 'Segoe UI Variable Text', 'Segoe UI', 'Microsoft YaHei UI',
+    'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --app-font-mono: 'Cascadia Code', 'Cascadia Mono', Consolas, 'Courier New', monospace;
   // 让 Element Plus 控件与自定义面板的圆角语言一致
   --el-border-radius-base: 8px;
   --el-border-radius-small: 6px;
@@ -30,16 +36,24 @@ body,
 
 body {
   overflow: hidden;
-  font-family: 'Inter', 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
-    'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+  font-family: var(--app-font-body);
   color: var(--el-text-color-primary);
   background-color: var(--el-bg-color-page);
-  background-image:
-    radial-gradient(circle at 8% -10%, color-mix(in srgb, var(--el-color-primary) 8%, transparent), transparent 34%),
-    radial-gradient(circle at 102% -6%, color-mix(in srgb, var(--el-color-success) 6%, transparent), transparent 30%);
-  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--app-font-display);
+}
+
+code,
+pre,
+kbd {
+  font-family: var(--app-font-mono);
 }
 
 ::selection {
@@ -74,7 +88,6 @@ body {
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: var(--app-radius-lg);
-  box-shadow: var(--el-box-shadow-lighter);
 }
 
 // Element Plus 视觉收编

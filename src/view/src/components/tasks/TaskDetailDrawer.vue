@@ -91,7 +91,8 @@ import {
 import type { Task } from '@shared/types/electron'
 import TaskStatusTag from './TaskStatusTag.vue'
 import TaskPriorityBadge from './TaskPriorityBadge.vue'
-import { dueState, formatDateTime, formatDueLabel } from '@/utils/task'
+import { dueState, formatDueLabel } from '@/utils/task'
+import { formatDateTime } from '@/utils/time'
 
 const props = defineProps<{ modelValue: boolean; task: Task | null }>()
 const emit = defineEmits<{

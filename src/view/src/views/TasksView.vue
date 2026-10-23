@@ -17,23 +17,7 @@
       </template>
     </PageHeader>
 
-    <section class="stats-strip" aria-label="任务统计">
-      <article
-        v-for="card in statCards"
-        :key="card.label"
-        class="stat-card app-surface"
-        :class="[`is-${card.tone}`, { 'is-loading': statsLoading }]"
-      >
-        <span class="stat-card__icon">
-          <el-icon :size="20"><component :is="card.icon" /></el-icon>
-        </span>
-        <div class="stat-card__body">
-          <span class="stat-card__label">{{ card.label }}</span>
-          <strong>{{ card.value }}</strong>
-          <small>{{ card.hint }}</small>
-        </div>
-      </article>
-    </section>
+    <StatRail :items="statCards" :loading="statsLoading" aria-label="任务统计" />
 
     <section class="filter-bar app-surface" aria-label="任务筛选">
       <el-input
@@ -275,7 +259,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import type { TableInstance } from 'element-plus'
-import type { Component } from 'vue'
 import {
   CircleCheck,
   Delete,
@@ -291,6 +274,7 @@ import {
 import type { Task, TaskSortBy, TaskStatus } from '@shared/types/electron'
 import { isTaskStatus, TASK_PAGE_SIZES } from '@shared/tasks/model'
 import PageHeader from '@/components/layout/PageHeader.vue'
+import StatRail from '@/components/layout/StatRail.vue'
 import TaskFormDialog from '@/components/tasks/TaskFormDialog.vue'
 import TaskDetailDrawer from '@/components/tasks/TaskDetailDrawer.vue'
 import TaskStatusTag from '@/components/tasks/TaskStatusTag.vue'
@@ -299,11 +283,12 @@ import { useTasks } from '@/composables/useTasks'
 import {
   dueState,
   formatDueLabel,
-  formatRelativeTime,
   TASK_CATEGORY_SUGGESTIONS,
   TASK_PRIORITY_OPTIONS,
   TASK_STATUS_OPTIONS
 } from '@/utils/task'
+import { formatRelativeTime } from '@/utils/time'
+import type { StatRailItem } from '@/utils/ui'
 
 const route = useRoute()
 const router = useRouter()
@@ -356,13 +341,7 @@ const sortValue = computed({
   }
 })
 
-const statCards = computed<Array<{
-  label: string
-  value: number
-  hint: string
-  tone: 'primary' | 'warning' | 'success' | 'danger'
-  icon: Component
-}>>(() => [
+const statCards = computed<StatRailItem[]>(() => [
   {
     label: '全部任务',
     value: stats.value.total,
@@ -590,90 +569,6 @@ onMounted(async () => {
   padding-bottom: 8px;
 }
 
-.stats-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.stat-card {
-  --stat-color: var(--el-color-primary);
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 18px;
-  overflow: hidden;
-}
-
-.stat-card::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    var(--stat-color),
-    color-mix(in srgb, var(--stat-color) 20%, transparent)
-  );
-  opacity: 0.65;
-}
-
-.stat-card.is-warning {
-  --stat-color: var(--el-color-warning);
-}
-
-.stat-card.is-success {
-  --stat-color: var(--el-color-success);
-}
-
-.stat-card.is-danger {
-  --stat-color: var(--el-color-danger);
-}
-
-.stat-card__icon {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
-  display: grid;
-  place-items: center;
-  border-radius: 13px;
-  color: var(--stat-color);
-  background: color-mix(in srgb, var(--stat-color) 12%, transparent);
-}
-
-.stat-card__body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.stat-card__label {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.stat-card__body strong {
-  margin-top: 1px;
-  font-size: 25px;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-  color: var(--el-text-color-primary);
-}
-
-.stat-card__body small {
-  margin-top: 2px;
-  font-size: 11px;
-  color: var(--el-text-color-placeholder);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.stat-card.is-loading {
-  opacity: 0.6;
-}
-
 .filter-bar {
   display: flex;
   align-items: center;
@@ -886,12 +781,6 @@ onMounted(async () => {
 .pagination-hint {
   font-size: 12px;
   color: var(--el-text-color-secondary);
-}
-
-@media (max-width: 1200px) {
-  .stats-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 900px) {

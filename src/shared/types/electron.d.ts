@@ -189,6 +189,42 @@ export interface TaskDeleteResult {
   deleted: number
 }
 
+/** 插件运行时：python 走系统解释器，node 走 Electron 内置 Node（ELECTRON_RUN_AS_NODE） */
+export type PluginRuntime = 'python' | 'node'
+
+/** 插件运行状态 */
+export type PluginStatus = 'idle' | 'running' | 'success' | 'error' | 'disabled'
+
+/** 插件清单摘要 + 最近一次执行状态（IPC 传输结构） */
+export interface PluginInfo {
+  id: string
+  name: string
+  version: string
+  description: string
+  runtime: PluginRuntime
+  /** 相对插件目录的入口脚本路径 */
+  entry: string
+  /** 插件目录绝对路径（由主进程扫描得出，不接受渲染层传入） */
+  dir: string
+  enabled: boolean
+  runOnStartup: boolean
+  timeoutMs: number
+  status: PluginStatus
+  lastRunAt: string | null
+  lastDurationMs: number | null
+  exitCode: number | null
+  /** stdout + stderr，展示用截断文本 */
+  output: string
+  /** 失败原因（清单错误 / 解释器缺失 / 超时 / 非零退出码） */
+  error: string
+}
+
+/** 安装示例插件的结果 */
+export interface PluginInstallResult {
+  installed: boolean
+  path: string
+}
+
 /** 事件订阅的退订函数（方案 B3/R5：渲染层 onUnmounted 时调用，替代 removeAllListeners 核弹） */
 export type Unsubscribe = () => void
 
@@ -242,6 +278,15 @@ export interface ElectronAPI {
   deleteTasks: (ids: number[]) => Promise<IpcResult<TaskDeleteResult>>
   getTaskStats: () => Promise<IpcResult<TaskStats>>
   seedDemoTasks: () => Promise<IpcResult<TaskSeedResult>>
+
+  // 插件系统（工作区 plugins/，初始化完成后执行 manifest 指定的脚本）
+  listPlugins: () => Promise<IpcResult<PluginInfo[]>>
+  runPlugin: (id: string) => Promise<IpcResult<PluginInfo>>
+  setPluginEnabled: (id: string, enabled: boolean) => Promise<IpcResult<PluginInfo>>
+  reloadPlugins: () => Promise<IpcResult<PluginInfo[]>>
+  installSamplePlugin: () => Promise<IpcResult<PluginInstallResult>>
+  openPluginFolder: (id?: string) => Promise<IpcResult<void>>
+  onPluginStatus: (callback: (plugin: PluginInfo) => void) => Unsubscribe
 
   // 自动更新
   checkForUpdates: () => Promise<IpcResult<UpdateStatusInfo>>
